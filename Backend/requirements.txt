@@ -1,0 +1,10 @@
+Flask
+Flask-Cors
+Flask-Limiter
+Celery
+redis
+pymongo
+scikit-learn
+joblib
+flask-pymongo
+dotenv
