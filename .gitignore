@@ -6,6 +6,10 @@ __pycache__/
 # Model
 model.pkl
 tfidf_vectorizer.pkl
+model.joblib
+tfidf_vectorizer.joblib
+Enron.csv
+
 
 # C extensions
 *.so
