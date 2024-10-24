@@ -35,10 +35,10 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    # Example: Fetch and process emails
+    # Fetch and process emails received within the last hours
     try:
-        emails = fetch_and_analyze_emails()  # Corrected this function call
-        logger.info("Emails processed and saved to the database.")
+        emails = fetch_and_analyze_emails()
+        logger.info("Emails from the last hours processed and saved to the database.")
     except Exception as e:
         logger.error(f"Error processing emails: {e}")
 
