@@ -1,5 +1,5 @@
 import unittest
-from app import create_app
+from api import create_app
 
 class RoutesTestCase(unittest.TestCase):
     def setUp(self):
