@@ -1,18 +1,47 @@
 import imaplib
 from email.policy import default
 import email
-from config.config import Config
 import logging
+from typing import Optional, Union
+from ssl import SSLError
 
-def connect_to_mail():
+from config.mailserver import Config
+
+
+
+def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]:
     try:
-        mail = imaplib.IMAP4_SSL(Config.MAIL_SERVER)
-        mail.login(Config.MAIL_USERNAME, Config.MAIL_PASSWORD)
-        mail.select('inbox')
-        logging.info("Successfully connected to the mail server.")
+        # Log connection attempt
+        logging.info(f"Attempting to connect to mail server for user: {username}")
+        
+        # Create SSL connection
+        try:
+            mail = imaplib.IMAP4_SSL(Config.MAIL_SERVER, Config.MAIL_PORT)
+            logging.info("SSL connection established")
+        except SSLError as ssl_err:
+            logging.error(f"SSL Connection failed: {str(ssl_err)}")
+            raise Exception(f"Failed to establish secure connection: {str(ssl_err)}")
+        
+        # Attempt login
+        try:
+            mail.login(username, password)
+            logging.info("Login successful")
+        except imaplib.IMAP4.error as login_err:
+            logging.error(f"Login failed: {str(login_err)}")
+            raise Exception(f"Login failed: {str(login_err)}")
+        
+        # Select inbox
+        try:
+            mail.select('inbox')
+            logging.info("Inbox selected successfully")
+        except imaplib.IMAP4.error as select_err:
+            logging.error(f"Failed to select inbox: {str(select_err)}")
+            raise Exception(f"Failed to access inbox: {str(select_err)}")
+        
         return mail
+        
     except Exception as e:
-        logging.error(f"Failed to connect to mail: {e}")
+        logging.error(f"Mail connection error: {str(e)}")
         return None
 
 def parse_email(raw_email):

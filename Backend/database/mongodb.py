@@ -1,8 +1,10 @@
 from pymongo import MongoClient, ReturnDocument
 
 from datetime import datetime
-from config.config import Config
+
 import logging
+
+from config.mailserver import Config
 
 # Initialize MongoDB client and database
 client = MongoClient(Config.MONGODB_URI)
