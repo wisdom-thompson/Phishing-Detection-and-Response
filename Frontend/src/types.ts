@@ -13,5 +13,5 @@ export interface EmailAnalysis {
 }
 
 export interface User {
-  email: string;
+  email: string | null;
 }

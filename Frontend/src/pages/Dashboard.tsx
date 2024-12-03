@@ -67,7 +67,7 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    let intervalId: number;
+    let intervalId: NodeJS.Timeout | number;
 
     const checkAuth = async () => {
       if (user && credentials) {
@@ -94,9 +94,7 @@ const Dashboard: React.FC = () => {
       }
     };
   }, [user, credentials]);
-  if (!user) {
-    return null;
-  }
+
 
   return (
     <Box sx={{ 

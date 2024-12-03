@@ -1,5 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { LoginCredentials, User } from "../types";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../components/Auth/FireBase";
 
 interface AuthState {
   user: User | null;
@@ -20,9 +22,17 @@ const useAuth = () => {
         : null,
       isLoading: false,
       error: null,
-      isAuthenticated: Boolean(localStorage.getItem("user")),
+      isAuthenticated: Boolean(userData),
     };
   });
+
+  useEffect(() => {
+    if (authState.user) {
+      localStorage.setItem("user", JSON.stringify(authState.user));
+    } else {
+      localStorage.removeItem("user");
+    }
+  }, [authState.user]);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -32,8 +42,6 @@ const useAuth = () => {
         email: credentials.email,
         password: credentials.password,
       };
-      localStorage.setItem("user", JSON.stringify(user));
-
       setAuthState({
         user,
         credentials: user,
@@ -58,9 +66,45 @@ const useAuth = () => {
     }
   }, []);
 
+  const loginWithGoogle = useCallback(async () => {
+    setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      console.log("Google User:", user);
+
+      setAuthState({
+        user: {
+          email: user.email,
+       
+        },
+        credentials: null,
+        isLoading: false,
+        error: null,
+        isAuthenticated: true,
+      });
+      return true;
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      setAuthState((prev) => ({
+        ...prev,
+        user: null,
+        credentials: null,
+        isLoading: false,
+        isAuthenticated: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "An error occurred during Google login",
+      }));
+      return false;
+    }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem("user");
-
     setAuthState({
       user: null,
       credentials: null,
@@ -73,6 +117,7 @@ const useAuth = () => {
   return {
     ...authState,
     login,
+    loginWithGoogle,
     logout,
   };
 };
