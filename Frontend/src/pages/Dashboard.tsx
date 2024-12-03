@@ -9,6 +9,7 @@ import { EmailDetails } from "../components/Email/EmailDetails";
 import { Analytics } from "../components/Dashboard/Analytics";
 import { Footer } from "../components/Layout/Footer";
 
+
 const Dashboard: React.FC = () => {
   const [emails, setEmails] = useState<EmailAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +68,7 @@ const Dashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    let intervalId: number;
+    let intervalId: NodeJS.Timeout | number;
 
     const checkAuth = async () => {
       if (user && credentials) {
@@ -94,9 +95,7 @@ const Dashboard: React.FC = () => {
       }
     };
   }, [user, credentials]);
-  if (!user) {
-    return null;
-  }
+
 
   return (
     <Box sx={{ 

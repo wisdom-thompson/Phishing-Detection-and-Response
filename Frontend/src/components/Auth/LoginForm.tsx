@@ -1,3 +1,4 @@
+import { signInWithPopup } from "firebase/auth";
 import { useState } from "react";
 import {
   Box,
@@ -18,6 +19,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import SecurityIcon from "@mui/icons-material/Security";
+import { auth, googleProvider } from "./FireBase";
 
 export const LoginForm = () => {
   const navigate = useNavigate();
@@ -45,6 +47,20 @@ export const LoginForm = () => {
       );
     }
   };
+
+  const handleGoogleLogin = () => {
+    signInWithPopup(auth, googleProvider)
+    .then(() => {
+      navigate("/dashboard");
+    })
+    .catch((err) => {
+      console.error("Google Login unsucceful", err)
+      alert("Google Login failed. Please try again.")
+    
+    });
+  };
+
+
 
   return (
     <Box
@@ -167,6 +183,25 @@ export const LoginForm = () => {
             ) : (
               "Sign In"
             )}
+          </Button>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            sx={{
+              mt: 1,
+              py: 1.5,
+              fontSize: "1rem",
+              fontWeight: 600,
+              textTransform: "none",
+              borderRadius: 2,
+              display: "flex",
+              alignItems: "center",
+            }}
+            onClick={handleGoogleLogin}
+          >
+            
+            Sign in with Google
           </Button>
         </Box>
       </Paper>
