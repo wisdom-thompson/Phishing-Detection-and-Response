@@ -8,6 +8,7 @@ import { EmailList } from "../components/Email/EmailList";
 import { EmailDetails } from "../components/Email/EmailDetails";
 import { Analytics } from "../components/Dashboard/Analytics";
 import { Footer } from "../components/Layout/Footer";
+import { useNavigate } from "react-router-dom";
 
 
 const Dashboard: React.FC = () => {
