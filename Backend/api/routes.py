@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, redirect, session
 from flask_cors import cross_origin
 from datetime import datetime, timezone
 from mail_processor.fetcher import connect_to_mail, parse_email
@@ -6,10 +6,27 @@ from mail_processor.analyzer import process_email
 from model.models import load_model
 from database.mongodb import get_last_processed_time, update_last_processed_time
 import logging
+import google_auth_oauthlib.flow
+from dotenv import load_dotenv
+import os
 
+# Load environment variables
+load_dotenv()
+
+# Define Blueprint for routes
 routes_bp = Blueprint('routes', __name__)
+
+# Load AI/ML model and vectorizer
 model, vectorizer = load_model()
 
+# Google OAuth2 Configuration
+CLIENT_SECRETS_FILE = os.getenv("CREDENTIAL_PATH")
+SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+REDIRECT_URI = "http://localhost:5173/dashboard"
+
+logging.basicConfig(level=logging.INFO)
+
+# Routes
 @routes_bp.route('/')
 def index():
     return jsonify({"message": "Welcome to Phishing Detection API!"})
@@ -21,12 +38,12 @@ def health_check():
 @routes_bp.route('/auth/login', methods=['POST'])
 @cross_origin()
 def login():
+    """Authenticate user credentials with the mail server."""
     try:
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
         
-        # Try to connect to mail server
         mail = connect_to_mail(email, password)
         if mail:
             mail.logout()
@@ -39,33 +56,29 @@ def login():
 @routes_bp.route('/emails/analyze', methods=['POST'])
 @cross_origin()
 def analyze_emails():
+    """Analyze emails for phishing detection."""
     try:
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
         
-        # Get last processed time
         last_processed_time = get_last_processed_time()
-        if not last_processed_time:
-            logging.info("No last processed time found, will process all emails")
-        else:
-            logging.info(f"Last processed time: {last_processed_time}")
+        logging.info(f"Last processed time: {last_processed_time}")
 
-        # Connect to mail server
         mail = connect_to_mail(email, password)
         if not mail:
             return jsonify({"message": "Failed to connect to mail server"}), 401
 
-        # Fetch latest emails
+        # Fetch the last 10 emails
         status, messages = mail.search(None, 'ALL')
         if status != 'OK':
-            mail.logout()
             logging.error("Failed to search emails")
+            mail.logout()
             return jsonify({"message": "Failed to fetch emails"}), 500
 
-        email_ids = messages[0].split()[-10:]  # Get last 10 emails
+        email_ids = messages[0].split()[-10:]  # Last 10 emails
         if not email_ids:
-            logging.warning("No emails found in the inbox.")
+            logging.info("No emails found in the inbox.")
             return jsonify({"emails": []}), 200
 
         results = []
@@ -76,24 +89,24 @@ def analyze_emails():
             if status == 'OK':
                 raw_email = msg_data[0][1]
                 email_content = parse_email(raw_email)
-                
-                # Check if email is newer than last processed time
+
+                # Check email timestamp
                 email_timestamp = email_content.get('timestamp')
                 if email_timestamp and last_processed_time:
+                    from email.utils import parsedate_to_datetime
                     try:
-                        from email.utils import parsedate_to_datetime
                         email_datetime = parsedate_to_datetime(email_timestamp)
                         if email_datetime <= last_processed_time:
-                            logging.debug(f"Skipping already processed email from {email_timestamp}")
+                            logging.debug(f"Skipping already processed email: {email_timestamp}")
                             continue
-                    except (ValueError, TypeError, AttributeError) as e:
+                    except Exception as e:
                         logging.error(f"Error parsing email timestamp: {e}")
                         continue
 
-                # Process new email for phishing detection
+                # Analyze email content
                 is_phishing = process_email(email_id.decode(), email_content, model, vectorizer)
                 new_emails_processed = True
-                
+
                 results.append({
                     "email_id": email_id.decode(),
                     "subject": email_content.get('subject'),
@@ -104,14 +117,60 @@ def analyze_emails():
                     "is_phishing": is_phishing
                 })
 
-        # Update last processed time only if new emails were processed
         if new_emails_processed:
             update_last_processed_time(datetime.now(timezone.utc))
-            logging.info("Updated last processed time after analyzing new emails")
+            logging.info("Updated last processed time.")
 
         mail.logout()
         return jsonify({"emails": results}), 200
 
     except Exception as e:
-        logging.error(f"Analysis error: {e}")
+        logging.error(f"Error analyzing emails: {e}")
         return jsonify({"message": "Failed to analyze emails"}), 500
+
+@routes_bp.route('/auth/google', methods=['GET'])
+def google_login():
+    """Initiate Google OAuth2 login."""
+    try:
+        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+            CLIENT_SECRETS_FILE, scopes=SCOPES
+        )
+        flow.redirect_uri = REDIRECT_URI
+
+        authorization_url, state = flow.authorization_url(
+            access_type="offline", include_granted_scopes="true"
+        )
+        session["state"] = state
+        return jsonify({"url": authorization_url})
+    except Exception as e:
+        logging.error(f"Google login error: {e}")
+        return jsonify({"message": "Google login failed"}), 500
+
+@routes_bp.route('/auth/callback', methods=['GET'])
+def google_callback():
+    """Handle Google OAuth2 callback."""
+    try:
+        state = session.get("state")
+        flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
+            CLIENT_SECRETS_FILE, scopes=SCOPES, state=state
+        )
+        flow.redirect_uri = REDIRECT_URI
+
+        flow.fetch_token(authorization_response=request.url)
+        credentials = flow.credentials
+        session["credentials"] = credentials_to_dict(credentials)
+        return jsonify({"message": "Google authentication successful"}), 200
+    except Exception as e:
+        logging.error(f"Google callback error: {e}")
+        return jsonify({"message": "Google authentication failed"}), 500
+
+def credentials_to_dict(credentials):
+    """Convert Google OAuth2 credentials to dictionary."""
+    return {
+        "token": credentials.token,
+        "refresh_token": credentials.refresh_token,
+        "token_uri": credentials.token_uri,
+        "client_id": credentials.client_id,
+        "client_secret": credentials.client_secret,
+        "scopes": credentials.scopes,
+    }
