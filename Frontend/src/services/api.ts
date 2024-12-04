@@ -31,6 +31,14 @@ export const login = async (credentials: LoginCredentials | { email: string }) =
 
 export const analyzeEmails = async (credentials: LoginCredentials | { email: string }) => {
   try {
+    // Get the Firebase ID token
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("No authenticated user found");
+    }
+    
+    const idToken = await user.getIdToken();
+    
     const response = await api.post<{ emails: EmailAnalysis[] }>(
       "/emails/analyze",
       credentials,
@@ -38,6 +46,7 @@ export const analyzeEmails = async (credentials: LoginCredentials | { email: str
         timeout: 30000, // 30 second timeout
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         }
       }
     );

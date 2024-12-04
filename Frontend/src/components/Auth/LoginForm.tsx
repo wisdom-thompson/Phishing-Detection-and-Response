@@ -58,12 +58,19 @@ export const LoginForm = () => {
         throw new Error("No email found in Google account");
       }
 
-      const success = await login(user);
+      // Get the ID token
+      const idToken = await user.getIdToken();
+      
+      const success = await login({
+        email: user.email,
+        idToken: idToken
+      });
+      
       if (!success) {
         throw new Error("Failed to login with Google account");
       }
 
-      toast.success("Google login successful! Analyzing emails...");
+      toast.success("Google login successful! Fetching emails...");
       
       // Analyze emails after successful login
       try {

@@ -1,5 +1,10 @@
 from flask import Blueprint, jsonify, request, redirect, session
 from flask_cors import cross_origin
+import pickle
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from firebase_admin import auth
 from datetime import datetime, timezone
 from mail_processor.fetcher import connect_to_mail, parse_email
 from mail_processor.analyzer import process_email
@@ -66,12 +71,36 @@ def analyze_emails():
     try:
         data = request.get_json()
         email = data.get('email')
-        password = data.get('password', '')
+        id_token = request.headers.get('Authorization', '').replace('Bearer ', '')
         
+        if not id_token:
+            return jsonify({"message": "No authentication token provided"}), 401
+            
+        # Verify Firebase ID token
+        try:
+            decoded_token = auth.verify_id_token(id_token)
+            if decoded_token['email'] != email:
+                return jsonify({"message": "Email mismatch in token"}), 401
+        except Exception as e:
+            logging.error(f"Token verification failed: {e}")
+            return jsonify({"message": "Invalid authentication token"}), 401
+            
         # For Google-authenticated users, use Gmail API
-        if not password:
-            if 'credentials' not in session:
-                return jsonify({"message": "No Gmail credentials found"}), 401
+        credentials = None
+        if os.path.exists('token.pickle'):
+            with open('token.pickle', 'rb') as token:
+                credentials = pickle.load(token)
+                
+        if not credentials or not credentials.valid:
+            if credentials and credentials.expired and credentials.refresh_token:
+                credentials.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRETS_FILE, SCOPES)
+                credentials = flow.run_local_server(port=0)
+                
+            with open('token.pickle', 'wb') as token:
+                pickle.dump(credentials, token)
                 
             credentials = session['credentials']
             # Use Gmail API to fetch emails
