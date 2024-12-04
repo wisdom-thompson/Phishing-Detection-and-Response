@@ -32,7 +32,7 @@ def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]
         
         # Select inbox
         try:
-            mail.select('inbox')
+            mail.select('INBOX')  # Use uppercase INBOX for better compatibility
             logging.info("Inbox selected successfully")
         except imaplib.IMAP4.error as select_err:
             logging.error(f"Failed to select inbox: {str(select_err)}")
@@ -43,6 +43,50 @@ def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]
     except Exception as e:
         logging.error(f"Mail connection error: {str(e)}")
         return None
+
+def fetch_emails(mail, max_emails: int = 10) -> list:
+    """Fetch recent emails from the mailbox."""
+    try:
+        # Search for all emails in inbox
+        status, messages = mail.search(None, 'ALL')
+        if status != 'OK':
+            logging.error("Failed to search emails")
+            return []
+
+        email_ids = messages[0].split()
+        if not email_ids:
+            logging.info("No emails found in inbox")
+            return []
+
+        # Get the most recent emails
+        recent_email_ids = email_ids[-max_emails:] if len(email_ids) > max_emails else email_ids
+        
+        emails = []
+        for email_id in recent_email_ids:
+            try:
+                status, msg_data = mail.fetch(email_id, '(RFC822)')
+                if status != 'OK':
+                    logging.error(f"Failed to fetch email ID {email_id}")
+                    continue
+                    
+                if not msg_data or not msg_data[0]:
+                    continue
+                    
+                raw_email = msg_data[0][1]
+                email_content = parse_email(raw_email)
+                if email_content:
+                    email_content['email_id'] = email_id.decode()
+                    emails.append(email_content)
+                    
+            except Exception as e:
+                logging.error(f"Error processing email ID {email_id}: {e}")
+                continue
+                
+        return emails
+        
+    except Exception as e:
+        logging.error(f"Error fetching emails: {e}")
+        return []
 
 def parse_email(raw_email):
     """Parse raw email bytes to extract essential information."""
