@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { LoginCredentials, User } from "../types";
+import { User as FirebaseUser } from "firebase/auth";
 
 interface AuthState {
   user: User | null;
@@ -24,13 +25,16 @@ const useAuth = () => {
     };
   });
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials | FirebaseUser) => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const user = {
+      const user = 'email' in credentials ? {
         email: credentials.email,
         password: credentials.password,
+      } : {
+        email: credentials.email,
+        password: '', // For Google login
       };
       localStorage.setItem("user", JSON.stringify(user));
 

@@ -10,7 +10,7 @@ const api = axios.create({
   },
 });
 
-export const login = async (credentials: LoginCredentials) => {
+export const login = async (credentials: LoginCredentials | { email: string }) => {
   try {
     const response = await api.post("/auth/login", credentials);
     // Store auth token if provided
@@ -29,7 +29,7 @@ export const login = async (credentials: LoginCredentials) => {
   }
 };
 
-export const analyzeEmails = async (credentials: LoginCredentials) => {
+export const analyzeEmails = async (credentials: LoginCredentials | { email: string }) => {
   const response = await api.post<{ emails: EmailAnalysis[] }>(
     "/emails/analyze",
     credentials

@@ -42,8 +42,12 @@ def login():
     try:
         data = request.get_json()
         email = data.get('email')
-        password = data.get('password')
+        password = data.get('password', '')
         
+        # If no password, assume Google authentication
+        if not password:
+            return jsonify({"message": "Authentication successful"}), 200
+            
         mail = connect_to_mail(email, password)
         if mail:
             mail.logout()
@@ -60,8 +64,14 @@ def analyze_emails():
     try:
         data = request.get_json()
         email = data.get('email')
-        password = data.get('password')
+        password = data.get('password', '')
         
+        # For Google-authenticated users, use OAuth2 flow instead of password
+        if not password:
+            # TODO: Implement Google OAuth2 email fetching
+            # For now, return empty result
+            return jsonify({"emails": []}), 200
+            
         last_processed_time = get_last_processed_time()
         logging.info(f"Last processed time: {last_processed_time}")
 

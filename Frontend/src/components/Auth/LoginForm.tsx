@@ -48,16 +48,22 @@ export const LoginForm = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    signInWithPopup(auth, googleProvider)
-    .then(() => {
-      navigate("/dashboard");
-    })
-    .catch((err) => {
-      console.error("Google Login unsucceful", err)
-      alert("Google Login failed. Please try again.")
-    
-    });
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+      
+      if (user && user.email) {
+        const success = await login(user);
+        if (success) {
+          toast.success("Google login successful! Analyzing emails...");
+          navigate("/dashboard");
+        }
+      }
+    } catch (err) {
+      console.error("Google Login unsuccessful", err);
+      toast.error("Google Login failed. Please try again.");
+    }
   };
 
 
