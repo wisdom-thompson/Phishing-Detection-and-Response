@@ -8,19 +8,24 @@ logging.basicConfig(level=logging.INFO)
 
 def process_email(email_id, email_content, model, vectorizer):
     """Analyze and save email details."""
+    if not email_content or not isinstance(email_content, dict):
+        logging.error(f"Invalid email content for ID {email_id}")
+        return False
+
     try:
-        logging.debug(f"Processing email ID {email_id}: {email_content}")
+        logging.debug(f"Processing email ID {email_id}")
 
-        # Validate email content
-        if not isinstance(email_content, dict):
-            logging.error(f"Expected dictionary but got {type(email_content)}: {email_content}")
-            return None
+        # Validate required fields
+        required_fields = ['sender', 'subject', 'body', 'timestamp']
+        if not all(field in email_content for field in required_fields):
+            logging.error(f"Missing required fields in email {email_id}")
+            return False
 
-        # Ensure all required fields are present with default values if missing
-        email_content.setdefault('sender', 'Unknown Sender')
-        email_content.setdefault('timestamp', datetime.now(timezone.utc).isoformat())
-        email_content.setdefault('subject', 'No Subject')
-        email_content.setdefault('body', '')
+        # Clean and prepare content
+        email_content['body'] = email_content['body'].strip()
+        if not email_content['body']:
+            logging.warning(f"Empty body in email {email_id}")
+            return False
         
         # Check if the model and vectorizer are loaded
         if model is None or vectorizer is None:

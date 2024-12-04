@@ -47,8 +47,8 @@ def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]
 def fetch_emails(mail, max_emails: int = 10) -> list:
     """Fetch recent emails from the mailbox."""
     try:
-        # Search for all emails in inbox
-        status, messages = mail.search(None, 'ALL')
+        # Search for all emails in inbox, ordered by date
+        status, messages = mail.search(None, '(ALL)', 'REVERSE')  # Get newest first
         if status != 'OK':
             logging.error("Failed to search emails")
             return []
@@ -59,29 +59,35 @@ def fetch_emails(mail, max_emails: int = 10) -> list:
             return []
 
         # Get the most recent emails
-        recent_email_ids = email_ids[-max_emails:] if len(email_ids) > max_emails else email_ids
+        recent_email_ids = email_ids[:max_emails]  # Take first N emails since they're newest
         
         emails = []
         for email_id in recent_email_ids:
             try:
+                # Fetch email with specific parts we need
                 status, msg_data = mail.fetch(email_id, '(RFC822)')
                 if status != 'OK':
                     logging.error(f"Failed to fetch email ID {email_id}")
                     continue
                     
                 if not msg_data or not msg_data[0]:
+                    logging.warning(f"No data received for email ID {email_id}")
                     continue
                     
                 raw_email = msg_data[0][1]
                 email_content = parse_email(raw_email)
-                if email_content:
+                
+                if email_content and all(key in email_content for key in ['subject', 'sender', 'body', 'timestamp']):
                     email_content['email_id'] = email_id.decode()
                     emails.append(email_content)
+                else:
+                    logging.warning(f"Incomplete email content for ID {email_id}")
                     
             except Exception as e:
-                logging.error(f"Error processing email ID {email_id}: {e}")
+                logging.error(f"Error processing email ID {email_id}: {str(e)}")
                 continue
                 
+        logging.info(f"Successfully fetched {len(emails)} emails")
         return emails
         
     except Exception as e:
@@ -92,35 +98,51 @@ def parse_email(raw_email):
     """Parse raw email bytes to extract essential information."""
     try:
         msg = email.message_from_bytes(raw_email, policy=default)
+        
+        # Initialize email content with default values
         email_content = {
-            'email_id': msg['message-id'],
-            'subject': msg['subject'],
-            'sender': msg['from'],  # Changed to 'sender'
+            'email_id': msg['message-id'] or '',
+            'subject': msg['subject'] or 'No Subject',
+            'sender': msg['from'] or 'Unknown Sender',
             'body': '',
-            'timestamp': msg['Date'],  # Changed to 'timestamp'
+            'timestamp': msg['date'] or datetime.now(timezone.utc).isoformat(),
         }
 
-        # If the email is multipart
+        # Extract body content
         if msg.is_multipart():
             for part in msg.walk():
-                content_disposition = str(part.get("Content-Disposition"))
-                if 'attachment' not in content_disposition:
-                    body_part = part.get_payload(decode=True)
-                    if body_part:
-                        email_content['body'] += body_part.decode(part.get_content_charset() or 'utf-8', errors='ignore') + '\n'
+                if part.get_content_type() == "text/plain":
+                    try:
+                        charset = part.get_content_charset() or 'utf-8'
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            decoded_content = payload.decode(charset, errors='replace')
+                            email_content['body'] += decoded_content + '\n'
+                    except Exception as e:
+                        logging.error(f"Error decoding multipart content: {str(e)}")
         else:
-            # Handle single-part emails
-            body_part = msg.get_payload(decode=True)
-            if body_part:
-                email_content['body'] += body_part.decode(msg.get_content_charset() or 'utf-8', errors='ignore')
+            try:
+                charset = msg.get_content_charset() or 'utf-8'
+                payload = msg.get_payload(decode=True)
+                if payload:
+                    email_content['body'] = payload.decode(charset, errors='replace')
+            except Exception as e:
+                logging.error(f"Error decoding single part content: {str(e)}")
 
-        # Log a warning if the body is still empty
-        if not email_content['body'].strip():
-            logging.warning(f"Email {email_content['subject']} has no body content.")
+        # Clean up body content
+        email_content['body'] = email_content['body'].strip()
+        
+        # Validate content
+        if not email_content['body']:
+            logging.warning(f"Email '{email_content['subject']}' has no body content")
+            email_content['body'] = '[No Content]'
 
-        # Debug log to check parsed email content
-        logging.debug(f"Parsed email content: {email_content}")
+        logging.debug(f"Successfully parsed email: {email_content['subject']}")
         return email_content
+
+    except Exception as e:
+        logging.error(f"Error parsing email: {str(e)}")
+        return None
 
     except Exception as e:
         logging.error(f"Error parsing email: {e}")
