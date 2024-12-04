@@ -9,7 +9,11 @@ from datetime import datetime, timezone
 from mail_processor.fetcher import connect_to_mail, parse_email
 from mail_processor.analyzer import process_email
 from model.models import load_model
-from database.mongodb import get_last_processed_time, update_last_processed_time
+from database.mongodb import (
+    get_last_processed_time,
+    update_last_processed_time,
+    save_email_to_db
+)
 import logging
 import google_auth_oauthlib.flow
 from dotenv import load_dotenv
