@@ -4,6 +4,7 @@ import email
 import logging
 from typing import Optional, Union
 from ssl import SSLError
+from datetime import datetime, timezone
 
 from config.mailserver import Config
 
