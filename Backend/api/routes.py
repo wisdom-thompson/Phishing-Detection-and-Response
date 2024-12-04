@@ -149,12 +149,15 @@ def analyze_emails():
             
             return jsonify({"emails": email_results}), 200
             
-        last_processed_time = get_last_processed_time()
-        logging.info(f"Last processed time: {last_processed_time}")
+        # Handle regular email authentication
+        password = data.get('password', '')
+        if password:  # Regular email authentication
+            last_processed_time = get_last_processed_time()
+            logging.info(f"Last processed time: {last_processed_time}")
 
-        mail = connect_to_mail(email, password)
-        if not mail:
-            return jsonify({"message": "Failed to connect to mail server"}), 401
+            mail = connect_to_mail(email, password)
+            if not mail:
+                return jsonify({"message": "Failed to connect to mail server"}), 401
 
         # Fetch the last 10 emails
         status, messages = mail.search(None, 'ALL')
