@@ -2,61 +2,11 @@ import imaplib
 from email.policy import default
 import email
 import logging
-from typing import Optional, Union, Dict
+from typing import Optional, Union
 from ssl import SSLError
 from datetime import datetime, timezone
-import socket
 
 from config.mailserver import Config
-from typing import Dict, Optional
-
-
-def get_mail_settings(domain: str) -> Optional[Dict[str, any]]:
-    """Get mail server settings for a domain."""
-    # Default settings from Config
-    if domain in ['gmail.com', 'googlemail.com']:
-        return {
-            'server': 'imap.gmail.com',
-            'port': 993
-        }
-    elif domain in ['outlook.com', 'hotmail.com', 'live.com']:
-        return {
-            'server': 'outlook.office365.com',
-            'port': 993
-        }
-    elif domain in ['yahoo.com', 'ymail.com']:
-        return {
-            'server': 'imap.mail.yahoo.com',
-            'port': 993
-        }
-    else:
-        # Try common IMAP server patterns for custom domains
-        common_patterns = [
-            f'imap.{domain}',
-            f'mail.{domain}',
-            f'imap-mail.{domain}'
-        ]
-        
-        # First try the configured default
-        if hasattr(Config, 'MAIL_SERVER') and hasattr(Config, 'MAIL_PORT'):
-            return {
-                'server': Config.MAIL_SERVER,
-                'port': Config.MAIL_PORT
-            }
-            
-        # Then try common patterns
-        for pattern in common_patterns:
-            try:
-                # Try to resolve the hostname
-                socket.gethostbyname(pattern)
-                return {
-                    'server': pattern,
-                    'port': 993  # Default IMAP SSL port
-                }
-            except socket.gaierror:
-                continue
-                
-        return None
 
 
 def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]:
@@ -64,22 +14,13 @@ def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]
         # Log connection attempt
         logging.info(f"Attempting to connect to mail server for user: {username}")
         
-        # Extract domain from email for custom domain handling
-        domain = username.split('@')[-1]
-        
-        # Determine mail server settings
-        mail_settings = get_mail_settings(domain)
-        if not mail_settings:
-            logging.error(f"No mail settings found for domain: {domain}")
-            return None
-            
         # Create SSL connection
         try:
-            mail = imaplib.IMAP4_SSL(mail_settings['server'], mail_settings['port'])
-            logging.info(f"SSL connection established to {mail_settings['server']}")
+            mail = imaplib.IMAP4_SSL(Config.MAIL_SERVER, Config.MAIL_PORT)
+            logging.info("SSL connection established")
         except SSLError as ssl_err:
             logging.error(f"SSL Connection failed: {str(ssl_err)}")
-            raise Exception(f"Failed to establish secure connection: {str(ssl_err)}")
+            return None
         
         # Attempt login
         try:
@@ -87,16 +28,10 @@ def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]
             logging.info("Login successful")
         except imaplib.IMAP4.error as login_err:
             logging.error(f"Login failed: {str(login_err)}")
-            raise Exception(f"Login failed: {str(login_err)}")
+            return None
         
         # Select inbox
-        try:
-            mail.select('INBOX')  # Use uppercase INBOX for better compatibility
-            logging.info("Inbox selected successfully")
-        except imaplib.IMAP4.error as select_err:
-            logging.error(f"Failed to select inbox: {str(select_err)}")
-            raise Exception(f"Failed to access inbox: {str(select_err)}")
-        
+        mail.select('inbox')
         return mail
         
     except Exception as e:
