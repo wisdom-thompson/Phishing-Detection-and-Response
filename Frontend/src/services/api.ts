@@ -30,9 +30,19 @@ export const login = async (credentials: LoginCredentials | { email: string }) =
 };
 
 export const analyzeEmails = async (credentials: LoginCredentials | { email: string }) => {
-  const response = await api.post<{ emails: EmailAnalysis[] }>(
-    "/emails/analyze",
-    credentials
-  );
-  return response.data;
+  try {
+    const response = await api.post<{ emails: EmailAnalysis[] }>(
+      "/emails/analyze",
+      credentials
+    );
+    
+    if (response.data.emails.length === 0) {
+      console.log("No emails found to analyze");
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error("Error analyzing emails:", error);
+    throw error;
+  }
 };

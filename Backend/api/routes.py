@@ -9,6 +9,8 @@ import logging
 import google_auth_oauthlib.flow
 from dotenv import load_dotenv
 import os
+import base64
+from googleapiclient.discovery import build
 
 # Load environment variables
 load_dotenv()
@@ -66,11 +68,57 @@ def analyze_emails():
         email = data.get('email')
         password = data.get('password', '')
         
-        # For Google-authenticated users, use OAuth2 flow instead of password
+        # For Google-authenticated users, use Gmail API
         if not password:
-            # TODO: Implement Google OAuth2 email fetching
-            # For now, return empty result
-            return jsonify({"emails": []}), 200
+            if 'credentials' not in session:
+                return jsonify({"message": "No Gmail credentials found"}), 401
+                
+            credentials = session['credentials']
+            # Use Gmail API to fetch emails
+            gmail_service = build('gmail', 'v1', credentials=credentials)
+            results = gmail_service.users().messages().list(userId='me', maxResults=10).execute()
+            messages = results.get('messages', [])
+            
+            email_results = []
+            for message in messages:
+                msg = gmail_service.users().messages().get(userId='me', id=message['id'], format='full').execute()
+                email_content = {
+                    'subject': '',
+                    'sender': '',
+                    'body': '',
+                    'timestamp': ''
+                }
+                
+                # Extract email details
+                headers = msg['payload']['headers']
+                for header in headers:
+                    if header['name'] == 'Subject':
+                        email_content['subject'] = header['value']
+                    elif header['name'] == 'From':
+                        email_content['sender'] = header['value']
+                    elif header['name'] == 'Date':
+                        email_content['timestamp'] = header['value']
+                
+                # Get email body
+                if 'parts' in msg['payload']:
+                    for part in msg['payload']['parts']:
+                        if part['mimeType'] == 'text/plain':
+                            email_content['body'] = base64.urlsafe_b64decode(part['body']['data']).decode()
+                            break
+                
+                # Analyze the email
+                is_phishing = process_email(message['id'], email_content, model, vectorizer)
+                
+                email_results.append({
+                    "email_id": message['id'],
+                    "subject": email_content['subject'],
+                    "sender": email_content['sender'],
+                    "timestamp": email_content['timestamp'],
+                    "body": email_content['body'],
+                    "is_phishing": is_phishing
+                })
+            
+            return jsonify({"emails": email_results}), 200
             
         last_processed_time = get_last_processed_time()
         logging.info(f"Last processed time: {last_processed_time}")

@@ -57,7 +57,16 @@ export const LoginForm = () => {
         const success = await login(user);
         if (success) {
           toast.success("Google login successful! Analyzing emails...");
-          navigate("/dashboard");
+          
+          // Analyze emails after successful login
+          try {
+            await analyzeEmails({ email: user.email });
+            toast.success("Email analysis complete!");
+            navigate("/dashboard");
+          } catch (analysisError) {
+            console.error("Email analysis failed:", analysisError);
+            toast.error("Failed to analyze emails. Please try again.");
+          }
         }
       }
     } catch (err) {
