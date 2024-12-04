@@ -71,19 +71,101 @@ def analyze_emails():
     try:
         data = request.get_json()
         email = data.get('email')
+        password = data.get('password', '')
         id_token = request.headers.get('Authorization', '').replace('Bearer ', '')
         
-        if not id_token:
-            return jsonify({"message": "No authentication token provided"}), 401
+        results = []
+        is_google_auth = bool(id_token)
+        
+        if is_google_auth:
+            try:
+                # Verify Firebase ID token for Google auth
+                decoded_token = auth.verify_id_token(id_token)
+                if decoded_token['email'] != email:
+                    return jsonify({"message": "Email mismatch in token"}), 401
+                    
+                # Use Gmail API
+                credentials = None
+                if os.path.exists('token.pickle'):
+                    with open('token.pickle', 'rb') as token:
+                        credentials = pickle.load(token)
+                
+                if not credentials or not credentials.valid:
+                    if credentials and credentials.expired and credentials.refresh_token:
+                        credentials.refresh(Request())
+                    else:
+                        flow = InstalledAppFlow.from_client_secrets_file(
+                            CLIENT_SECRETS_FILE, SCOPES)
+                        credentials = flow.run_local_server(port=0)
+                        with open('token.pickle', 'wb') as token:
+                            pickle.dump(credentials, token)
+                
+                gmail_service = build('gmail', 'v1', credentials=credentials)
+                messages = gmail_service.users().messages().list(userId='me', maxResults=10).execute().get('messages', [])
+                
+                for message in messages:
+                    msg = gmail_service.users().messages().get(userId='me', id=message['id'], format='full').execute()
+                    email_content = parse_gmail_message(msg)
+                    
+                    # Analyze email content
+                    is_phishing = process_email(message['id'], email_content, model, vectorizer)
+                    
+                    results.append({
+                        "email_id": message['id'],
+                        "subject": email_content.get('subject', ''),
+                        "sender": email_content.get('sender', ''),
+                        "timestamp": email_content.get('timestamp', ''),
+                        "body": email_content.get('body', ''),
+                        "is_phishing": is_phishing
+                    })
+                    
+            except Exception as e:
+                logging.error(f"Google auth error: {e}")
+                return jsonify({"message": "Failed to fetch emails from Gmail"}), 500
+                
+        else:
+            # Regular email authentication
+            if not password:
+                return jsonify({"message": "Password required for non-Google authentication"}), 400
+                
+            mail = connect_to_mail(email, password)
+            if not mail:
+                return jsonify({"message": "Failed to connect to mail server"}), 401
             
-        # Verify Firebase ID token
-        try:
-            decoded_token = auth.verify_id_token(id_token)
-            if decoded_token['email'] != email:
-                return jsonify({"message": "Email mismatch in token"}), 401
-        except Exception as e:
-            logging.error(f"Token verification failed: {e}")
-            return jsonify({"message": "Invalid authentication token"}), 401
+            try:
+                # Fetch the last 10 emails
+                status, messages = mail.search(None, 'ALL')
+                if status != 'OK':
+                    raise Exception("Failed to search emails")
+                
+                email_ids = messages[0].split()[-10:]
+                
+                for email_id in email_ids:
+                    status, msg_data = mail.fetch(email_id, '(RFC822)')
+                    if status == 'OK':
+                        raw_email = msg_data[0][1]
+                        email_content = parse_email(raw_email)
+                        
+                        # Analyze email content
+                        is_phishing = process_email(email_id.decode(), email_content, model, vectorizer)
+                        
+                        results.append({
+                            "email_id": email_id.decode(),
+                            "subject": email_content.get('subject', ''),
+                            "sender": email_content.get('sender', ''),
+                            "timestamp": email_content.get('timestamp', ''),
+                            "body": email_content.get('body', ''),
+                            "is_phishing": is_phishing
+                        })
+                
+            finally:
+                mail.logout()
+        
+        # Store results in database
+        for result in results:
+            save_email_to_db(result)
+            
+        return jsonify({"emails": results}), 200
             
         # For Google-authenticated users, use Gmail API
         credentials = None
@@ -264,3 +346,44 @@ def credentials_to_dict(credentials):
         "client_secret": credentials.client_secret,
         "scopes": credentials.scopes,
     }
+
+def parse_gmail_message(msg):
+    """Parse Gmail API message into email content."""
+    email_content = {
+        'subject': '',
+        'sender': '',
+        'body': '',
+        'timestamp': ''
+    }
+    
+    # Extract headers
+    headers = msg['payload']['headers']
+    for header in headers:
+        name = header['name'].lower()
+        if name == 'subject':
+            email_content['subject'] = header['value']
+        elif name == 'from':
+            email_content['sender'] = header['value']
+        elif name == 'date':
+            email_content['timestamp'] = header['value']
+    
+    # Extract body
+    if 'parts' in msg['payload']:
+        for part in msg['payload']['parts']:
+            if part['mimeType'] == 'text/plain':
+                try:
+                    data = part['body'].get('data', '')
+                    if data:
+                        email_content['body'] = base64.urlsafe_b64decode(data).decode()
+                        break
+                except Exception as e:
+                    logging.error(f"Error decoding email body: {e}")
+    elif 'body' in msg['payload']:
+        try:
+            data = msg['payload']['body'].get('data', '')
+            if data:
+                email_content['body'] = base64.urlsafe_b64decode(data).decode()
+        except Exception as e:
+            logging.error(f"Error decoding email body: {e}")
+    
+    return email_content

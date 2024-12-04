@@ -29,25 +29,23 @@ export const login = async (credentials: LoginCredentials | { email: string }) =
   }
 };
 
-export const analyzeEmails = async (credentials: LoginCredentials | { email: string }) => {
+export const analyzeEmails = async (credentials: LoginCredentials | { email: string; idToken?: string }) => {
   try {
-    // Get the Firebase ID token
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error("No authenticated user found");
+    let headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    // For Google auth, use the provided idToken
+    if ('idToken' in credentials && credentials.idToken) {
+      headers['Authorization'] = `Bearer ${credentials.idToken}`;
     }
-    
-    const idToken = await user.getIdToken();
     
     const response = await api.post<{ emails: EmailAnalysis[] }>(
       "/emails/analyze",
       credentials,
       {
         timeout: 30000, // 30 second timeout
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        }
+        headers
       }
     );
     

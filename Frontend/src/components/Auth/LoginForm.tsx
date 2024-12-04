@@ -61,10 +61,12 @@ export const LoginForm = () => {
       // Get the ID token
       const idToken = await user.getIdToken();
       
-      const success = await login({
+      const credentials = {
         email: user.email,
         idToken: idToken
-      });
+      };
+      
+      const success = await login(credentials);
       
       if (!success) {
         throw new Error("Failed to login with Google account");
