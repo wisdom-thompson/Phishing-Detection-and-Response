@@ -1,5 +1,6 @@
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, browserPopupRedirectResolver } from "firebase/auth";
 import { useState } from "react";
+import { analyzeEmails } from "../../services/api";
 import {
   Box,
   TextField,
@@ -50,7 +51,7 @@ export const LoginForm = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
       const user = result.user;
       
       if (user && user.email) {
