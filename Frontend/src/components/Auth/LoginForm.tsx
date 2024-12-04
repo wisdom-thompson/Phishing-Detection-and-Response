@@ -54,21 +54,31 @@ export const LoginForm = () => {
       const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
       const user = result.user;
       
-      if (user && user.email) {
-        const success = await login(user);
-        if (success) {
-          toast.success("Google login successful! Analyzing emails...");
-          
-          // Analyze emails after successful login
-          try {
-            await analyzeEmails({ email: user.email });
-            toast.success("Email analysis complete!");
-            navigate("/dashboard");
-          } catch (analysisError) {
-            console.error("Email analysis failed:", analysisError);
-            toast.error("Failed to analyze emails. Please try again.");
-          }
+      if (!user?.email) {
+        throw new Error("No email found in Google account");
+      }
+
+      const success = await login(user);
+      if (!success) {
+        throw new Error("Failed to login with Google account");
+      }
+
+      toast.success("Google login successful! Analyzing emails...");
+      
+      // Analyze emails after successful login
+      try {
+        const analysisResult = await analyzeEmails({ email: user.email });
+        if (analysisResult?.emails) {
+          toast.success("Email analysis complete!");
+          navigate("/dashboard");
+        } else {
+          throw new Error("No email analysis results received");
         }
+      } catch (analysisError) {
+        console.error("Email analysis failed:", analysisError);
+        // Still navigate to dashboard even if analysis fails
+        toast.error("Email analysis incomplete. You can retry from the dashboard.");
+        navigate("/dashboard");
       }
     } catch (err) {
       console.error("Google Login unsuccessful", err);

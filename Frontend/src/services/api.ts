@@ -33,16 +33,29 @@ export const analyzeEmails = async (credentials: LoginCredentials | { email: str
   try {
     const response = await api.post<{ emails: EmailAnalysis[] }>(
       "/emails/analyze",
-      credentials
+      credentials,
+      {
+        timeout: 30000, // 30 second timeout
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
     
-    if (response.data.emails.length === 0) {
-      console.log("No emails found to analyze");
+    if (!response.data) {
+      throw new Error("No response data received");
+    }
+    
+    if (!Array.isArray(response.data.emails)) {
+      throw new Error("Invalid email analysis response format");
     }
     
     return response.data;
   } catch (error) {
-    console.error("Error analyzing emails:", error);
+    if (axios.isAxiosError(error)) {
+      const message = error.response?.data?.message || "Failed to analyze emails";
+      throw new Error(`Email analysis failed: ${message}`);
+    }
     throw error;
   }
 };
