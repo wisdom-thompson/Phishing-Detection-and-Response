@@ -25,7 +25,7 @@ const useAuth = () => {
     };
   });
 
-  const login = useCallback(async (credentials: LoginCredentials | FirebaseUser) => {
+  const login = useCallback(async (credentials: LoginCredentials | { email: string; idToken: string }) => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {

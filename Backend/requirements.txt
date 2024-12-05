@@ -3,14 +3,16 @@ Flask-Cors
 Flask-Limiter
 Celery
 redis
-pymongo
+pymongo>=4.6.0
 scikit-learn
 joblib
 flask-pymongo
 python-dotenv
 pandas
 python-dateutil
-pymongo>=4.6.0
-
+firebase-admin
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
 
 

@@ -29,7 +29,7 @@ export const login = async (credentials: LoginCredentials | { email: string }) =
   }
 };
 
-export const analyzeEmails = async (credentials: LoginCredentials | { email: string; idToken?: string }) => {
+export const analyzeEmails = async (credentials: LoginCredentials | { email: string; idToken: string }) => {
   try {
     let headers: Record<string, string> = {
       'Content-Type': 'application/json'
