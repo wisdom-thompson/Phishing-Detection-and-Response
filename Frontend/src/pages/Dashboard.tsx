@@ -27,6 +27,7 @@ import { Footer } from "../components/Layout/Footer";
 import { fetchGoogleEmails } from "../hooks/fetchGoogleEmails";
 import { EmailAnalysis } from "../types";
 
+<<<<<<< HEAD
 interface EmailStats {
   date: string;
   total: number;
@@ -50,6 +51,17 @@ const processEmailsForChart = (emails: EmailAnalysis[]): EmailStats[] => {
       return acc;
     },
     {}
+=======
+
+const Dashboard: React.FC = () => {
+  const [emails, setEmails] = useState<EmailAnalysis[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user, credentials, isAuthenticated } = useAuth();
+  const [lastFetchTime, setLastFetchTime] = useState<number | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState<EmailAnalysis | null>(
+    null
+>>>>>>> 24f2730023b920d8633ee55d79c1ac94d8c96ccb
   );
 
   return Object.values(emailsByDate).sort(
