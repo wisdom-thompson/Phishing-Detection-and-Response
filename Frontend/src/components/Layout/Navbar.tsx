@@ -21,8 +21,8 @@ export const Navbar = () => {
           Phishing Shield
         </Typography>
         <Box>
-          <Button 
-            color="inherit" 
+          <Button
+            color="inherit"
             onClick={handleLogout}
             startIcon={<LogoutIcon />}
           >
