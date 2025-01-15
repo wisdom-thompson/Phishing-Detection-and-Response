@@ -16,7 +16,7 @@ export const login = async (credentials: LoginCredentials) => {
     // Store auth token if provided
     const token = response.data.token;
     if (token) {
-      localStorage.setItem('authToken', token);
+      sessionStorage.setItem('authToken', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
     return response.status === 200;
@@ -29,10 +29,34 @@ export const login = async (credentials: LoginCredentials) => {
   }
 };
 
-export const analyzeEmails = async (credentials: LoginCredentials) => {
-  const response = await api.post<{ emails: EmailAnalysis[] }>(
-    "/emails/analyze",
-    credentials
-  );
+export const analyzeEmails = async (credentials: LoginCredentials, token?: string) => {
+  try {
+    const response = await api.post<{ emails: EmailAnalysis[] }>(
+      "/emails/analyze",
+      token ? { token } : credentials,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data?.message || "Failed to analyze emails";
+      throw new Error(errorMessage);
+    }
+    throw error;
+  }
+};
+
+export const getGoogleAuthUrl = async () => {
+  const response = await api.get('/auth/google');
+  return response.data.url;
+};
+
+export const handleGoogleCallback = async (code: string) => {
+  const response = await api.post('/auth/callback', { code });
   return response.data;
 };

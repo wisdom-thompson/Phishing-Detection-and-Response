@@ -1,74 +1,134 @@
 import imaplib
-from email.policy import default
+from email import policy, utils
 import email
 import logging
-from typing import Optional, Union
-from ssl import SSLError
-
+from dateutil import parser
+from typing import Optional
+from ssl import SSLError, create_default_context
 from config.mailserver import Config
-
-
+from database.mongodb import save_email_to_db  # Import the save function from mongodb.py
+from datetime import datetime, timezone  # Add this import for datetime and timezone
 
 def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]:
+    """
+    Connect to the appropriate mail server using SSL.
+    """
     try:
-        # Log connection attempt
-        logging.info(f"Attempting to connect to mail server for user: {username}")
+        # Extract email domain dynamically
+        domain = username.split("@")[-1].lower()
+        logging.info(f"Extracted domain: {domain}")
+
+        # Dynamically map IMAP servers based on domain
+        imap_servers = {
+            "gmail.com": ("imap.gmail.com", 993),
+            "outlook.com": ("imap-mail.outlook.com", 993),
+            "yahoo.com": ("imap.mail.yahoo.com", 993),
+            "privateemail.com": ("mail.privateemail.com", 993)
+        }
         
-        # Create SSL connection
+        mail_server, mail_port = imap_servers.get(domain, (Config.MAIL_SERVER, Config.MAIL_PORT))
+        if not mail_server:
+            raise Exception(f"No IMAP server found for domain: {domain}")
+
+        logging.info(f"Attempting connection to server: {mail_server} on port: {mail_port}")
+
+        # Create an SSL connection
         try:
-            mail = imaplib.IMAP4_SSL(Config.MAIL_SERVER, Config.MAIL_PORT)
-            logging.info("SSL connection established")
+            context = create_default_context()
+            mail = imaplib.IMAP4_SSL(mail_server, mail_port, ssl_context=context)
+            logging.info("SSL connection established successfully.")
         except SSLError as ssl_err:
-            logging.error(f"SSL Connection failed: {str(ssl_err)}")
-            raise Exception(f"Failed to establish secure connection: {str(ssl_err)}")
-        
-        # Attempt login
+            logging.error(f"SSL connection error: {ssl_err}")
+            raise Exception("Unable to establish a secure connection.")
+
+        # Attempt to log in with provided credentials
         try:
             mail.login(username, password)
-            logging.info("Login successful")
+            logging.info("Login successful.")
         except imaplib.IMAP4.error as login_err:
-            logging.error(f"Login failed: {str(login_err)}")
-            raise Exception(f"Login failed: {str(login_err)}")
-        
-        # Select inbox
+            logging.error(f"Authentication failed: {login_err}")
+            raise Exception("Invalid email or password.")
+
+        # Select the inbox folder
         try:
-            mail.select('inbox')
-            logging.info("Inbox selected successfully")
+            mail.select("inbox")
+            logging.info("Inbox selected successfully.")
         except imaplib.IMAP4.error as select_err:
-            logging.error(f"Failed to select inbox: {str(select_err)}")
-            raise Exception(f"Failed to access inbox: {str(select_err)}")
-        
-        return mail
-        
+            logging.error(f"Failed to select inbox: {select_err}")
+            raise Exception("Unable to access the inbox.")
+
+        return mail  # Return the mail connection object
+
     except Exception as e:
-        logging.error(f"Mail connection error: {str(e)}")
+        logging.error(f"Error connecting to mail server: {e}")
         return None
+    # Return None if any failure occurs
 
 def parse_email(raw_email):
     """Parse raw email bytes to extract essential information."""
     try:
-        msg = email.message_from_bytes(raw_email, policy=default)
+        # Parse the raw email using the default policy
+        msg = email.message_from_bytes(raw_email, policy=policy.default)
+
+        # Extract email fields
         email_content = {
-            'email_id': msg['message-id'],
+            'email_id': msg['Message-ID'],
             'subject': msg['subject'],
-            'sender': msg['from'],  # Changed to 'sender'
+            'sender': msg['from'],
             'body': '',
-            'timestamp': msg['Date'],  # Changed to 'timestamp'
+            'timestamp': '',
         }
 
-        # If the email is multipart
+        # Extract and parse the timestamp (if available)
+        timestamp = msg.get('Date')
+        if timestamp:
+            try:
+                try:
+                    # First try parsing as ISO format
+                    parsed_timestamp = datetime.fromisoformat(timestamp)
+                except ValueError:
+                    # Fallback to email.utils parsing
+                    parsed_timestamp = email.utils.parsedate_to_datetime(timestamp)
+                
+                # Ensure timezone info
+                if parsed_timestamp.tzinfo is None:
+                    parsed_timestamp = parsed_timestamp.replace(tzinfo=timezone.utc)
+                else:
+                    parsed_timestamp = parsed_timestamp.astimezone(timezone.utc)
+                email_content['timestamp'] = parsed_timestamp.isoformat()
+            except Exception as e:
+                try:
+                    # Fallback to dateutil parser if email.utils fails
+                    parsed_timestamp = parser.parse(timestamp)
+                    if parsed_timestamp.tzinfo is None:
+                        parsed_timestamp = parsed_timestamp.replace(tzinfo=timezone.utc)
+                    else:
+                        parsed_timestamp = parsed_timestamp.astimezone(timezone.utc)
+                    email_content['timestamp'] = parsed_timestamp.isoformat()
+                except Exception as e:
+                    logging.warning(f"Error parsing timestamp: {timestamp}. Error: {e}")
+                    # Use current UTC time as fallback
+                    email_content['timestamp'] = datetime.now(timezone.utc).isoformat()
+        else:
+            logging.warning(f"Email {email_content['subject']} has no timestamp.")
+
+        # Handle multipart emails
         if msg.is_multipart():
             for part in msg.walk():
                 content_disposition = str(part.get("Content-Disposition"))
                 if 'attachment' not in content_disposition:
                     body_part = part.get_payload(decode=True)
                     if body_part:
-                        email_content['body'] += body_part.decode(part.get_content_charset() or 'utf-8', errors='ignore') + '\n'
+                        email_content['body'] += body_part.decode(
+                            part.get_content_charset() or 'utf-8', errors='ignore'
+                        ) + '\n'
         else:
             # Handle single-part emails
             body_part = msg.get_payload(decode=True)
             if body_part:
-                email_content['body'] += body_part.decode(msg.get_content_charset() or 'utf-8', errors='ignore')
+                email_content['body'] += body_part.decode(
+                    msg.get_content_charset() or 'utf-8', errors='ignore'
+                )
 
         # Log a warning if the body is still empty
         if not email_content['body'].strip():
@@ -80,4 +140,4 @@ def parse_email(raw_email):
 
     except Exception as e:
         logging.error(f"Error parsing email: {e}")
-        return {'subject': 'Error', 'body': '', 'sender': 'Unknown', 'timestamp': 'Unknown'}  # Ensure to return the expected keys
+        return {'subject': 'Error', 'body': '', 'sender': 'Unknown', 'timestamp': 'Unknown'}
