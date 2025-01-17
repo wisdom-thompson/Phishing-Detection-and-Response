@@ -1,61 +1,52 @@
-import { useState, useCallback, useEffect } from "react";
-import { LoginCredentials } from "../types";
+import { useState, useCallback } from "react";
+import { LoginCredentials, User } from "../types";
 
 interface AuthState {
-  user: LoginCredentials | null;
+  user: User | null;
+  credentials: LoginCredentials | null;
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
-  loginType: "google" | "imap" | null; // Ensure loginType is always defined
 }
+
 const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>(() => {
-    const storedUser = sessionStorage.getItem("user");
-    const userData: LoginCredentials | null = storedUser ? JSON.parse(storedUser) : null;
-
+    const storedUser = localStorage.getItem("user");
+    const userData = storedUser ? JSON.parse(storedUser) : null;
     return {
       user: userData,
+      credentials: userData
+        ? { email: userData.email, password: userData.password }
+        : null,
       isLoading: false,
       error: null,
-      isAuthenticated: Boolean(userData),
-      loginType: userData?.loginType || "imap", // Default to "imap" if missing
+      isAuthenticated: Boolean(localStorage.getItem("user")),
     };
   });
-
-  useEffect(() => {
-    if (authState.user) {
-      sessionStorage.setItem("user", JSON.stringify(authState.user));
-    } else {
-      sessionStorage.removeItem("user");
-    }
-  }, [authState.user]);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Determine login type based on the presence of a Gmail token
-      const loginType: "google" | "imap" = sessionStorage.getItem('gmailToken') ? 'google' : 'imap';
-
-      const user: LoginCredentials = {
+      const user = {
         email: credentials.email,
         password: credentials.password,
-        loginType: loginType, // Ensure this is correctly typed
       };
+      localStorage.setItem("user", JSON.stringify(user));
 
       setAuthState({
         user,
+        credentials: user,
         isLoading: false,
         error: null,
         isAuthenticated: true,
-        loginType: loginType,
       });
-
       return true;
     } catch (error) {
       setAuthState((prev) => ({
         ...prev,
         user: null,
+        credentials: null,
         isLoading: false,
         isAuthenticated: false,
         error:
@@ -63,19 +54,19 @@ const useAuth = () => {
             ? error.message
             : "An error occurred during login",
       }));
-
       return false;
     }
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.clear();
+    localStorage.removeItem("user");
+
     setAuthState({
       user: null,
+      credentials: null,
       isLoading: false,
       error: null,
       isAuthenticated: false,
-      loginType: "imap", // Reset to default
     });
   }, []);
 
@@ -87,4 +78,3 @@ const useAuth = () => {
 };
 
 export default useAuth;
-

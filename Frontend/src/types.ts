@@ -1,7 +1,6 @@
 export interface LoginCredentials {
   email: string;
   password: string;
-  loginType: "google" | "imap"; // Ensure loginType is explicitly declared
 }
 
 export interface EmailAnalysis {
@@ -15,6 +14,4 @@ export interface EmailAnalysis {
 
 export interface User {
   email: string;
-  password: string;
-  loginType: "google" | "imap"; // Ensure loginType is explicitly declared
 }

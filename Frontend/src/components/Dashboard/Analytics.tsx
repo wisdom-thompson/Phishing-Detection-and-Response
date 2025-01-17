@@ -1,4 +1,4 @@
-import { Box, Typography, Grid, CircularProgress, Paper, useTheme } from "@mui/material";
+import { Box, Typography, Grid, Paper } from "@mui/material";
 import { EmailAnalysis } from "../../types";
 import SecurityIcon from "@mui/icons-material/Security";
 import WarningIcon from "@mui/icons-material/Warning";
@@ -9,180 +9,71 @@ interface AnalyticsProps {
 }
 
 export const Analytics: React.FC<AnalyticsProps> = ({ emails }) => {
-  const theme = useTheme();
-
-  // Calculate statistics
   const totalEmails = emails.length;
   const phishingEmails = emails.filter((email) => email.is_phishing).length;
   const safeEmails = totalEmails - phishingEmails;
-  const phishingPercentage = totalEmails > 0 ? (phishingEmails / totalEmails) * 100 : 0;
-  const safePercentage = totalEmails > 0 ? (safeEmails / totalEmails) * 100 : 0;
-
-  const CircularProgressWithLabel = (
-    props: {
-      value: number;
-      color: "primary" | "secondary" | "error" | "info" | "success" | "warning" | "inherit";
-      icon: React.ReactNode;
-      label: string;
-      count: number;
-      gradient?: string[];
-    }
-  ) => {
-    return (
-      <Paper
-        elevation={3}
-        sx={{
-          p: 3,
-          borderRadius: 4,
-          background: props.gradient ?
-            `linear-gradient(135deg, ${props.gradient[0]}, ${props.gradient[1]})` :
-            'white',
-          transition: 'transform 0.3s ease-in-out',
-          '&:hover': {
-            transform: 'translateY(-5px)'
-          }
-        }}
-      >
-        <Box sx={{
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          width: "100%"
-        }}>
-          <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
-            <CircularProgress
-              variant="determinate"
-              size={140}
-              thickness={4}
-              value={100}
-              sx={{
-                color: theme.palette.grey[200],
-                position: 'absolute',
-              }}
-            />
-            <CircularProgress
-              variant="determinate"
-              size={140}
-              thickness={4}
-              value={props.value}
-              sx={{
-                color: props.color === 'inherit' ? '#fff' : theme.palette[props.color].main,
-                transition: 'all 0.5s ease-in-out',
-              }}
-            />
-            <Box
-              sx={{
-                top: 0,
-                left: 0,
-                bottom: 0,
-                right: 0,
-                position: 'absolute',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: props.gradient,
-              }}
-            >
-              {props.icon}
-              <Typography
-                variant="h4"
-                component="div"
-                sx={{
-                  fontWeight: 'bold',
-                  color: props.gradient ? '#fff' : 'inherit',
-                  mt: 1
-                }}
-              >
-                {props.count}
-              </Typography>
-            </Box>
-          </Box>
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 500,
-              color: props.gradient ? '#fff' : theme.palette.text.secondary,
-              textAlign: 'center'
-            }}
-          >
-            {props.label}
-          </Typography>
-        </Box>
-      </Paper>
-    );
-  };
+  const phishingPercentage = totalEmails > 0 
+    ? ((phishingEmails / totalEmails) * 100).toFixed(1) 
+    : "0";
 
   return (
-    <Box sx={{ py: 3 }}>
-      <Typography
-        variant="h4"
-        gutterBottom
-        sx={{
-          fontWeight: "bold",
-          textAlign: "left",
-          mb: 4,
-          background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-        }}
-      >
-        Email Analytics Overview
+    <Box>
+      <Typography variant="h6" gutterBottom>
+        Email Analytics
       </Typography>
-      <Grid container spacing={4} justifyContent="center" alignItems="stretch">
+      <Grid container spacing={3}>
         <Grid item xs={12} sm={4}>
-          <CircularProgressWithLabel
-            value={100}
-            color="inherit"
-            icon={<EmailIcon sx={{ fontSize: 40, color: '#fff' }} />}
-            label="Total Emails"
-            count={totalEmails}
-            gradient={['#2196F3', '#21CBF3']}
-          />
+          <Paper
+            sx={{
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              bgcolor: "primary.light",
+              color: "white",
+            }}
+          >
+            <EmailIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="h4">{totalEmails}</Typography>
+            <Typography variant="subtitle1">Total Emails</Typography>
+          </Paper>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <CircularProgressWithLabel
-            value={safePercentage}
-            color="success"
-            icon={<SecurityIcon sx={{ fontSize: 40 }} />}
-            label="Safe Emails"
-            count={safeEmails}
-          />
+          <Paper
+            sx={{
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              bgcolor: "success.light",
+              color: "white",
+            }}
+          >
+            <SecurityIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="h4">{safeEmails}</Typography>
+            <Typography variant="subtitle1">Safe Emails</Typography>
+          </Paper>
         </Grid>
         <Grid item xs={12} sm={4}>
-          <CircularProgressWithLabel
-            value={phishingPercentage}
-            color="error"
-            icon={<WarningIcon sx={{ fontSize: 40 }} />}
-            label="Phishing Detected"
-            count={phishingEmails}
-          />
+          <Paper
+            sx={{
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              bgcolor: "error.light",
+              color: "white",
+            }}
+          >
+            <WarningIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="h4">{phishingEmails}</Typography>
+            <Typography variant="subtitle1">Phishing Detected</Typography>
+          </Paper>
         </Grid>
       </Grid>
-
-      <Box
-        sx={{
-          mt: 4,
-          p: 2,
-          borderRadius: 2,
-          background: phishingPercentage > 50
-            ? 'linear-gradient(45deg, #ff9800 30%, #f44336 90%)'
-            : 'linear-gradient(45deg, #4caf50 30%, #2196f3 90%)',
-          boxShadow: '0 3px 5px 2px rgba(0, 0, 0, .1)',
-        }}
-      >
-        <Typography
-          variant="h6"
-          sx={{
-            textAlign: "center",
-            fontWeight: "bold",
-            color: 'white'
-          }}
-        >
-          {phishingPercentage.toFixed(1)}% of emails flagged as potential phishing attempts
-        </Typography>
-      </Box>
+      <Typography variant="subtitle2" sx={{ mt: 2, textAlign: "center" }}>
+        {phishingPercentage}% of emails flagged as potential phishing attempts
+      </Typography>
     </Box>
   );
 };
