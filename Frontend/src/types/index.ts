@@ -1,10 +1,12 @@
 export interface User {
   email: string;
+  profilePic?: string;
 }
 
 export interface LoginCredentials {
   email: string;
   password: string;
+  loginType: "google" | "imap";
 }
 
 export interface EmailAnalysis {
