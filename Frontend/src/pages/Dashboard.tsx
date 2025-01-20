@@ -102,12 +102,12 @@ const Dashboard: React.FC = () => {
   }, [user, emails]);
 
   const fetchGoogleEmailsHandler = useCallback(async () => {
-    if (!user) return;
-
     const token = sessionStorage.getItem("gmailToken");
-    if (!token) {
-      console.error("Gmail token missing");
-      setError("Authentication token is missing. Please log in again.");
+    const userEmail = sessionStorage.getItem("userEmail");
+    
+    if (!token || !userEmail) {
+      console.error("Gmail token or user email missing");
+      setError("Authentication information is missing. Please log in again.");
       return;
     }
 
@@ -115,9 +115,13 @@ const Dashboard: React.FC = () => {
     setError(null);
 
     try {
-      const fetchedGoogleEmails = await fetchGoogleEmails(token);
-      if (fetchedGoogleEmails && fetchedGoogleEmails.length > 0) {
-        const uniqueEmails = fetchedGoogleEmails.filter(newEmail => 
+      const response = await analyzeEmails(
+        { email: userEmail, password: '', loginType: 'google' },
+        token
+      );
+
+      if (response?.emails) {
+        const uniqueEmails = response.emails.filter((newEmail: EmailAnalysis) =>
           !emails.some(existingEmail => existingEmail.email_id === newEmail.email_id)
         );
         if (uniqueEmails.length > 0) {
@@ -130,7 +134,7 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, emails]);
+  }, [emails]);
 
   const setupEmailFetchingInterval = useCallback(() => {
     if (emailIntervalRef.current) {
