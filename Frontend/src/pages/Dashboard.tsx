@@ -72,29 +72,37 @@ const Dashboard: React.FC = () => {
   const emailIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchIMAPEmails = useCallback(async () => {
-    if (!user || loginType !== "imap") return;
+    if (!user) return;
 
     setLoading(true);
     setError(null);
 
     try {
+      const storedPassword = sessionStorage.getItem('userPassword');
       const response: any = await analyzeEmails({
         email: user.email,
-        password: user.password,
+        password: storedPassword || user.password,
         loginType: "imap",
       });
-      const newEmails = response.emails || [];
-      setEmails((prevEmails) => [...prevEmails, ...newEmails]);
+      
+      if (response?.emails) {
+        const uniqueEmails = response.emails.filter((newEmail: EmailAnalysis) => 
+          !emails.some(existingEmail => existingEmail.email_id === newEmail.email_id)
+        );
+        if (uniqueEmails.length > 0) {
+          setEmails(prevEmails => [...prevEmails, ...uniqueEmails]);
+        }
+      }
     } catch (err) {
       console.error("Error fetching IMAP emails:", err);
       setError("Failed to fetch emails. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [user, loginType]);
+  }, [user, emails]);
 
   const fetchGoogleEmailsHandler = useCallback(async () => {
-    if (!user || loginType !== "google") return;
+    if (!user) return;
 
     const token = sessionStorage.getItem("gmailToken");
     if (!token) {
@@ -109,9 +117,12 @@ const Dashboard: React.FC = () => {
     try {
       const fetchedGoogleEmails = await fetchGoogleEmails(token);
       if (fetchedGoogleEmails && fetchedGoogleEmails.length > 0) {
-        setEmails((prevEmails) => [...prevEmails, ...fetchedGoogleEmails]);
-      } else {
-        console.log("No new emails fetched.");
+        const uniqueEmails = fetchedGoogleEmails.filter(newEmail => 
+          !emails.some(existingEmail => existingEmail.email_id === newEmail.email_id)
+        );
+        if (uniqueEmails.length > 0) {
+          setEmails(prevEmails => [...prevEmails, ...uniqueEmails]);
+        }
       }
     } catch (err) {
       console.error("Error fetching Google emails:", err);
@@ -119,7 +130,7 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, loginType]);
+  }, [user, emails]);
 
   const setupEmailFetchingInterval = useCallback(() => {
     if (emailIntervalRef.current) {
@@ -137,15 +148,17 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const initializeFetching = async () => {
-      if (loginType === "imap") {
+      const currentLoginType = sessionStorage.getItem('loginType');
+      
+      if (currentLoginType === "imap") {
         await fetchIMAPEmails();
-      } else if (loginType === "google") {
+      } else if (currentLoginType === "google") {
         await fetchGoogleEmailsHandler();
       }
       setupEmailFetchingInterval();
     };
 
-    if (loginType) {
+    if (user) {
       initializeFetching();
     }
 
@@ -154,7 +167,7 @@ const Dashboard: React.FC = () => {
         clearInterval(emailIntervalRef.current);
       }
     };
-  }, [fetchIMAPEmails, fetchGoogleEmailsHandler, setupEmailFetchingInterval, loginType]);
+  }, [fetchIMAPEmails, fetchGoogleEmailsHandler, setupEmailFetchingInterval, user]);
 
   useEffect(() => {
     const stats = processEmailsForChart(emails);
