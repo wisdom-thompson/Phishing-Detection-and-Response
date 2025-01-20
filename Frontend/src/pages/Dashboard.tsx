@@ -132,7 +132,7 @@ const Dashboard: React.FC = () => {
       } else if (loginType === "google") {
         fetchGoogleEmailsHandler();
       }
-    }, 30000);
+    }, 60000);
   }, [fetchIMAPEmails, fetchGoogleEmailsHandler, loginType]);
 
   useEffect(() => {
