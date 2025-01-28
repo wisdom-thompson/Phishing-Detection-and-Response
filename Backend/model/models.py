@@ -21,4 +21,3 @@ def is_phishing_email(email_content, model, vectorizer):
     logging.debug(f"Predicted class: {prediction[0]}")  # Log the raw prediction
     
     return bool(prediction[0])
-

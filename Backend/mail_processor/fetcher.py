@@ -61,6 +61,7 @@ def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]
     except Exception as e:
         logging.error(f"Error connecting to mail server: {e}")
         return None
+    # Return None if any failure occurs
 
 def parse_email(raw_email):
     """Parse raw email bytes to extract essential information."""
@@ -135,10 +136,6 @@ def parse_email(raw_email):
         # Debug log to check parsed email content
         logging.debug(f"Parsed email content: {email_content}")
         return email_content
-
-    except Exception as e:
-        logging.error(f"Error parsing email: {str(e)}")
-        return None
 
     except Exception as e:
         logging.error(f"Error parsing email: {e}")

@@ -40,7 +40,7 @@ const useAuth = () => {
         ? "google"
         : "imap";
 
-      const user: LoginCredentials = 'email' in credentials ? {
+      const user: LoginCredentials = {
         email: credentials.email,
         password: credentials.password,
         loginType: loginType,

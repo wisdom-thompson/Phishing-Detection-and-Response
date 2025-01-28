@@ -1,10 +1,5 @@
 from flask import Blueprint, jsonify, request, session
 from flask_cors import cross_origin
-import pickle
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from firebase_admin import auth
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from auth.gmail_auth import create_gmail_service, get_gmail_messages
@@ -17,18 +12,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 routes_bp = Blueprint('routes', __name__)
-
-# Load AI/ML model and vectorizer
 model, vectorizer = load_model()
 
-# Google OAuth2 Configuration
-CLIENT_SECRETS_FILE = os.getenv("CREDENTIAL_PATH")
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-REDIRECT_URI = "http://localhost:5173/dashboard"
-
-logging.basicConfig(level=logging.INFO)
-
-# Routes
 @routes_bp.route('/')
 def index():
     return jsonify({"message": "Welcome to Phishing Detection API!"})
