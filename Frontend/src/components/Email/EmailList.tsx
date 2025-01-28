@@ -14,11 +14,11 @@ interface EmailListProps {
   selectedEmail: EmailAnalysis | null;
 }
 
-export const EmailList: React.FC<EmailListProps> = ({
+export default function EmailList({
   emails,
   onSelectEmail,
   selectedEmail,
-}) => {
+}: EmailListProps) {
   return (
     <List sx={{ maxHeight: "80vh", overflowY: "auto" }}>
       {emails
@@ -30,13 +30,16 @@ export const EmailList: React.FC<EmailListProps> = ({
           <ListItemButton
             selected={selectedEmail?.email_id === email.email_id}
             onClick={() => onSelectEmail(email)}
-            key={`${email.email_id}-${email.timestamp}`} // Unique key for list item
+            key={`${email.email_id}-${email.timestamp}`}
             sx={{
               border: 1,
               borderColor: "divider",
               borderRadius: 2,
               mb: 1,
-              bgcolor: selectedEmail?.email_id === email.email_id ? "grey.200" : "white",
+              bgcolor:
+                selectedEmail?.email_id === email.email_id
+                  ? "grey.200"
+                  : "white",
               "&:hover": { bgcolor: "grey.100" },
             }}
           >
@@ -56,9 +59,12 @@ export const EmailList: React.FC<EmailListProps> = ({
                   justifyContent="space-between"
                   alignItems="center"
                 >
-                  <Typography variant="body2" color="text.secondary" component="span">
+                  <Box
+                    component="span"
+                    sx={{ color: "text.secondary", typography: "body2" }}
+                  >
                     From: {email.sender || "Unknown Sender"}
-                  </Typography>
+                  </Box>
                   <Chip
                     label={email.is_phishing ? "Phishing" : "Safe"}
                     color={email.is_phishing ? "error" : "success"}
@@ -80,4 +86,4 @@ export const EmailList: React.FC<EmailListProps> = ({
         ))}
     </List>
   );
-};
+}

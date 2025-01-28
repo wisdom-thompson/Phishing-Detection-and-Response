@@ -5,9 +5,8 @@ import logging
 from dateutil import parser
 from typing import Optional
 from ssl import SSLError, create_default_context
-from config.mailserver import Config
-from database.mongodb import save_email_to_db  # Import the save function from mongodb.py
-from datetime import datetime, timezone  # Add this import for datetime and timezone
+from config.mailserver import Config 
+from datetime import datetime, timezone 
 
 def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]:
     """

@@ -29,6 +29,7 @@ export const login = async (credentials: LoginCredentials) => {
   }
 };
 
+
 export const analyzeEmails = async (credentials: LoginCredentials, token?: string) => {
   try {
     const response = await api.post<{ emails: EmailAnalysis[] }>(
@@ -50,6 +51,8 @@ export const analyzeEmails = async (credentials: LoginCredentials, token?: strin
     throw error;
   }
 };
+
+
 
 export const getGoogleAuthUrl = async () => {
   const response = await api.get('/auth/google');
