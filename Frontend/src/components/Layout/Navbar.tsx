@@ -14,10 +14,10 @@ export const Navbar = () => {
   };
 
   return (
-    <AppBar position="static" sx={{ mb: 3 }}>
+    <AppBar position="static" sx={{ mb: 3,  }}>
       <Toolbar>
-        <SecurityIcon sx={{ mr: 2 }} />
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+        <SecurityIcon sx={{ mr: 2,  }} />
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1,  }}>
           Phishing Shield
         </Typography>
         <Box>
@@ -25,7 +25,7 @@ export const Navbar = () => {
             color="inherit"
             onClick={handleLogout}
             startIcon={<LogoutIcon />}
-          >
+          >N  
             Logout
           </Button>
         </Box>

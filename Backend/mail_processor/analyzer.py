@@ -16,6 +16,7 @@ def process_email(
     """Analyze email content and save details to the database."""
     try:
         logging.debug(f"Processing email ID: {email_id}")
+        logging.debug(f"Email content received: {email_content}")
 
         if not isinstance(email_content, dict):
             logging.error("Email content must be a dictionary.")
@@ -23,17 +24,18 @@ def process_email(
 
         sender = email_content.get('sender')
         timestamp = email_content.get('timestamp')
+        body = email_content.get('body')
+
         if not sender or not timestamp:
             logging.error("Email content missing required fields: sender or timestamp.")
             return None
 
-        if not model or not vectorizer:
-            logging.error("Model and vectorizer must be properly initialized.")
+        if not isinstance(body, str):
+            logging.error(f"Invalid email body: {body}")
             return None
 
-        body = email_content.get('body', "")
-        if not isinstance(body, str):
-            logging.error("Email body is missing or invalid.")
+        if not model or not vectorizer:
+            logging.error("Model and vectorizer must be properly initialized.")
             return None
 
         is_phishing = is_phishing_email(email_content, model, vectorizer)
@@ -45,6 +47,7 @@ def process_email(
 
         source = email_content.get('source', 'imap')
         collection_name = "imap_emails" if source.lower() == "imap" else "gmail_emails"
+        logging.debug(f"Saving email to collection: {collection_name}")
         save_email_to_db(email_content, source)
 
         logging.info(f"Email {email_id} processed. Result: {'Phishing' if is_phishing else 'Safe'}.")
@@ -53,6 +56,7 @@ def process_email(
     except Exception as e:
         logging.exception(f"Failed to process email {email_id}: {e}")
         return False
+
 
 def should_process_email(received_time: datetime, last_processed_time: datetime) -> bool:
     """Determine if an email should be processed based on its received time."""

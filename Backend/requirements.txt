@@ -4,7 +4,7 @@ Flask-Limiter
 Celery
 redis
 pymongo
-scikit-learn
+scikit-learn==1.5.2
 joblib
 flask-pymongo
 python-dotenv

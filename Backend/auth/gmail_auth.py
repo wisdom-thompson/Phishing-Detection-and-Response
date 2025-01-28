@@ -50,60 +50,51 @@ def create_gmail_service(access_token: str) -> Optional[object]:
         logging.error(f"Failed to create Gmail service: {str(e)}", exc_info=True)
         return None
 
-def get_gmail_messages(service, max_results=50):
-    """Fetch messages from Gmail and format them for database storage."""
+def get_gmail_messages(service):
+    """
+    Fetch Gmail messages using the Gmail API.
+    """
     try:
-        results = service.users().messages().list(
-            userId='me',
-            maxResults=max_results,
-            q='is:unread in:inbox'  # Fetch unread inbox messages
-        ).execute()
+        results = service.users().messages().list(userId="me", labelIds=["INBOX"]).execute()
+        messages = results.get("messages", [])
 
-        messages = results.get('messages', [])
-        email_list = []
-        
-        for message in messages:
-            try:
-                msg = service.users().messages().get(
-                    userId='me', id=message['id'], format='full'
-                ).execute()
-                
-                headers = msg['payload']['headers']
-                subject = next((header['value'] for header in headers if header['name'].lower() == 'subject'), 'No Subject')
-                sender = next((header['value'] for header in headers if header['name'].lower() == 'from'), 'Unknown Sender')
-                
-                # Extract email body
-                body = ""
-                for part in msg['payload'].get('parts', []):
-                    if part['mimeType'] == 'text/plain':
-                        body_data = part['body'].get('data', '')
-                        body = base64.urlsafe_b64decode(body_data).decode('utf-8')
+        emails = []
+        for msg in messages:
+            msg_id = msg["id"]
+            message = service.users().messages().get(userId="me", id=msg_id).execute()
+
+            # Extract email details
+            payload = message.get("payload", {})
+            headers = {header["name"]: header["value"] for header in payload.get("headers", [])}
+            
+            # Decode email body
+            body = ""
+            if payload.get("body") and payload["body"].get("data"):
+                # If body is directly available
+                body = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8")
+            elif payload.get("parts"):
+                # If it's a multipart message, search for plain text part
+                for part in payload["parts"]:
+                    if part.get("mimeType") == "text/plain" and part.get("body") and part["body"].get("data"):
+                        body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8")
                         break
-                body = body or "No body content found"
 
-                # Convert timestamp to ISO format with UTC timezone
-                timestamp = datetime.fromtimestamp(int(msg['internalDate']) / 1000, tz=timezone.utc).isoformat()
+            email_data = {
+                "email_id": msg_id,
+                "subject": headers.get("Subject", "No Subject"),
+                "sender": headers.get("From", "Unknown Sender"),
+                "timestamp": message.get("internalDate"),  # Unix timestamp
+                "body": body,  # Decoded email body
+            }
 
-                # Extract URLs from the email body using regex
-                urls = re.findall(r'(https?://\S+)', body)
+            # Convert timestamp to ISO format
+            email_data["timestamp"] = datetime.fromtimestamp(
+                int(email_data["timestamp"]) / 1000, tz=timezone.utc
+            ).isoformat()
 
-                # Run phishing detection
+            emails.append(email_data)
 
-                email_list.append({
-                    'email_id': msg['id'],
-                    'subject': subject,
-                    'sender': sender,
-                    'body': body,
-                    'timestamp': timestamp,
-                    'urls': urls
-                })
-            except Exception as msg_error:
-                logging.error(f"Error processing message {message['id']}: {msg_error}")
-                continue
-
-        return email_list
+        return emails
     except Exception as e:
         logging.error(f"Error fetching Gmail messages: {e}")
-        raise
-
-
+        return []

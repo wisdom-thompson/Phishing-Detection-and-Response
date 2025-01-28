@@ -6,19 +6,21 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
-  loginType: "google" | "imap" | null; // Ensure loginType is always defined
+  loginType: "google" | "imap" | null;
 }
 const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>(() => {
     const storedUser = sessionStorage.getItem("user");
-    const userData: LoginCredentials | null = storedUser ? JSON.parse(storedUser) : null;
+    const userData: LoginCredentials | null = storedUser
+      ? JSON.parse(storedUser)
+      : null;
 
     return {
       user: userData,
       isLoading: false,
       error: null,
       isAuthenticated: Boolean(userData),
-      loginType: userData?.loginType || "imap", // Default to "imap" if missing
+      loginType: userData?.loginType || "imap",
     };
   });
 
@@ -34,13 +36,14 @@ const useAuth = () => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      // Determine login type based on the presence of a Gmail token
-      const loginType: "google" | "imap" = sessionStorage.getItem('gmailToken') ? 'google' : 'imap';
+      const loginType: "google" | "imap" = sessionStorage.getItem("gmailToken")
+        ? "google"
+        : "imap";
 
       const user: LoginCredentials = {
         email: credentials.email,
         password: credentials.password,
-        loginType: loginType, // Ensure this is correctly typed
+        loginType: loginType,
       };
 
       setAuthState({
@@ -75,7 +78,7 @@ const useAuth = () => {
       isLoading: false,
       error: null,
       isAuthenticated: false,
-      loginType: "imap", // Reset to default
+      loginType: "imap",
     });
   }, []);
 
@@ -87,4 +90,3 @@ const useAuth = () => {
 };
 
 export default useAuth;
-
