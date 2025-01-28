@@ -1,53 +1,62 @@
 import logging
 from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 from model.models import is_phishing_email
 from database.mongodb import save_email_to_db, db
 from utils.utils import extract_urls
 
 logging.basicConfig(level=logging.INFO)
 
-def process_email(email_id, email_content, model, vectorizer):
-    """Analyze and save email details."""
-    if not email_content or not isinstance(email_content, dict):
-        logging.error(f"Invalid email content for ID {email_id}")
-        return False
-
+def process_email(
+    email_id: str, 
+    email_content: Dict[str, Any], 
+    model, 
+    vectorizer
+) -> Optional[bool]:
+    """Analyze email content and save details to the database."""
     try:
-        logging.debug(f"Processing email ID {email_id}")
+        logging.debug(f"Processing email ID: {email_id}")
+        logging.debug(f"Email content received: {email_content}")
 
-        # Validate required fields
-        required_fields = ['sender', 'subject', 'body', 'timestamp']
-        if not all(field in email_content for field in required_fields):
-            logging.error(f"Missing required fields in email {email_id}")
-            return False
-
-        # Clean and prepare content
-        email_content['body'] = email_content['body'].strip()
-        if not email_content['body']:
-            logging.warning(f"Empty body in email {email_id}")
-            return False
-        
-        # Check if the model and vectorizer are loaded
-        if model is None or vectorizer is None:
-            logging.error("Model or vectorizer is not loaded properly.")
+        if not isinstance(email_content, dict):
+            logging.error("Email content must be a dictionary.")
             return None
 
-        # Analyze the body content
-        is_phishing = is_phishing_email(email_content, model, vectorizer)  # Use the entire email_content
-        email_content['is_phishing'] = is_phishing
-        email_content['urls'] = extract_urls(email_content['body'])  # Extract URLs from the body
+        sender = email_content.get('sender')
+        timestamp = email_content.get('timestamp')
+        body = email_content.get('body')
 
-        email_content['email_id'] = email_id  # Add email ID to content
+        if not sender or not timestamp:
+            logging.error("Email content missing required fields: sender or timestamp.")
+            return None
 
-        # Log the content before saving
-        logging.debug(f"Saving email to database: {email_content}")
-        save_email_to_db(email_content)  # Save the processed email to the database
+        if not isinstance(body, str):
+            logging.error(f"Invalid email body: {body}")
+            return None
 
-        logging.info(f"Processed email {email_id}: {'Phishing' if is_phishing else 'Safe'}")
+        if not model or not vectorizer:
+            logging.error("Model and vectorizer must be properly initialized.")
+            return None
+
+        is_phishing = is_phishing_email(email_content, model, vectorizer)
+        email_content.update({
+            'is_phishing': is_phishing,
+            'urls': extract_urls(body),
+            'email_id': email_id
+        })
+
+        source = email_content.get('source', 'imap')
+        collection_name = "imap_emails" if source.lower() == "imap" else "gmail_emails"
+        logging.debug(f"Saving email to collection: {collection_name}")
+        save_email_to_db(email_content, source)
+
+        logging.info(f"Email {email_id} processed. Result: {'Phishing' if is_phishing else 'Safe'}.")
         return is_phishing
+
     except Exception as e:
-        logging.error(f"Error processing email {email_id}: {e}")
+        logging.exception(f"Failed to process email {email_id}: {e}")
         return False
+
 
 def should_process_email(received_time: datetime, last_processed_time: datetime) -> bool:
     """Determine if an email should be processed based on its received time."""
@@ -63,11 +72,13 @@ def should_process_email(received_time: datetime, last_processed_time: datetime)
         logging.debug(f"Skipping email due to invalid date format: {received_time}")
         return False
 
-def get_processed_email_ids() -> set:
+def get_processed_email_ids(collection_name="email_id") -> set:
     """Retrieve already processed email IDs from MongoDB."""
     try:
-        processed_emails = db['emails'].find({}, {"email_id": 1})
+        collection = db[collection_name]
+        
+        processed_emails = collection.find({}, {"email_id": 1})
         return {email['email_id'] for email in processed_emails if 'email_id' in email}
     except Exception as e:
-        logging.error(f"Error fetching processed email IDs: {e}")
+        logging.error(f"Error fetching processed email IDs from '{collection_name}' collection: {e}")
         return set()

@@ -16,7 +16,7 @@ export const login = async (credentials: LoginCredentials | { email: string }) =
     // Store auth token if provided
     const token = response.data.token;
     if (token) {
-      localStorage.setItem('authToken', token);
+      sessionStorage.setItem('authToken', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
     return response.status === 200;
@@ -29,40 +29,37 @@ export const login = async (credentials: LoginCredentials | { email: string }) =
   }
 };
 
-export const analyzeEmails = async (credentials: LoginCredentials | { email: string; idToken: string }) => {
-  try {
-    let headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
 
-    // For Google auth, use the provided idToken
-    if ('idToken' in credentials && credentials.idToken) {
-      headers['Authorization'] = `Bearer ${credentials.idToken}`;
-    }
-    
+export const analyzeEmails = async (credentials: LoginCredentials, token?: string) => {
+  try {
     const response = await api.post<{ emails: EmailAnalysis[] }>(
       "/emails/analyze",
-      credentials,
+      token ? { token } : credentials,
       {
-        timeout: 30000, // 30 second timeout
-        headers
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
+        }
       }
     );
-    
-    if (!response.data) {
-      throw new Error("No response data received");
-    }
-    
-    if (!Array.isArray(response.data.emails)) {
-      throw new Error("Invalid email analysis response format");
-    }
-    
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      const message = error.response?.data?.message || "Failed to analyze emails";
-      throw new Error(`Email analysis failed: ${message}`);
+      const errorMessage = error.response?.data?.message || "Failed to analyze emails";
+      throw new Error(errorMessage);
     }
     throw error;
   }
+};
+
+
+
+export const getGoogleAuthUrl = async () => {
+  const response = await api.get('/auth/google');
+  return response.data.url;
+};
+
+export const handleGoogleCallback = async (code: string) => {
+  const response = await api.post('/auth/callback', { code });
+  return response.data;
 };

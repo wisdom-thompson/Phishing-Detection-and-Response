@@ -1,137 +1,139 @@
 import imaplib
-from email.policy import default
+from email import policy, utils
 import email
 import logging
-from typing import Optional, Union
-from ssl import SSLError
-from datetime import datetime, timezone
-
-from config.mailserver import Config
-
+from dateutil import parser
+from typing import Optional
+from ssl import SSLError, create_default_context
+from config.mailserver import Config 
+from datetime import datetime, timezone 
 
 def connect_to_mail(username: str, password: str) -> Optional[imaplib.IMAP4_SSL]:
+    """
+    Connect to the appropriate mail server using SSL.
+    """
     try:
-        # Log connection attempt
-        logging.info(f"Attempting to connect to mail server for user: {username}")
+        # Extract email domain dynamically
+        domain = username.split("@")[-1].lower()
+        logging.info(f"Extracted domain: {domain}")
+
+        # Dynamically map IMAP servers based on domain
+        imap_servers = {
+            "gmail.com": ("imap.gmail.com", 993),
+            "outlook.com": ("imap-mail.outlook.com", 993),
+            "yahoo.com": ("imap.mail.yahoo.com", 993),
+            "privateemail.com": ("mail.privateemail.com", 993)
+        }
         
-        # Create SSL connection
+        mail_server, mail_port = imap_servers.get(domain, (Config.MAIL_SERVER, Config.MAIL_PORT))
+        if not mail_server:
+            raise Exception(f"No IMAP server found for domain: {domain}")
+
+        logging.info(f"Attempting connection to server: {mail_server} on port: {mail_port}")
+
+        # Create an SSL connection
         try:
-            mail = imaplib.IMAP4_SSL(Config.MAIL_SERVER, Config.MAIL_PORT)
-            logging.info("SSL connection established")
+            context = create_default_context()
+            mail = imaplib.IMAP4_SSL(mail_server, mail_port, ssl_context=context)
+            logging.info("SSL connection established successfully.")
         except SSLError as ssl_err:
-            logging.error(f"SSL Connection failed: {str(ssl_err)}")
-            return None
-        
-        # Attempt login
+            logging.error(f"SSL connection error: {ssl_err}")
+            raise Exception("Unable to establish a secure connection.")
+
+        # Attempt to log in with provided credentials
         try:
             mail.login(username, password)
-            logging.info("Login successful")
+            logging.info("Login successful.")
         except imaplib.IMAP4.error as login_err:
-            logging.error(f"Login failed: {str(login_err)}")
-            return None
-        
-        # Select inbox
-        mail.select('inbox')
-        return mail
-        
+            logging.error(f"Authentication failed: {login_err}")
+            raise Exception("Invalid email or password.")
+
+        # Select the inbox folder
+        try:
+            mail.select("inbox")
+            logging.info("Inbox selected successfully.")
+        except imaplib.IMAP4.error as select_err:
+            logging.error(f"Failed to select inbox: {select_err}")
+            raise Exception("Unable to access the inbox.")
+
+        return mail  # Return the mail connection object
+
     except Exception as e:
-        logging.error(f"Mail connection error: {str(e)}")
+        logging.error(f"Error connecting to mail server: {e}")
         return None
-
-def fetch_emails(mail, max_emails: int = 10) -> list:
-    """Fetch recent emails from the mailbox."""
-    try:
-        # Search for all emails in inbox, ordered by date
-        status, messages = mail.search(None, '(ALL)', 'REVERSE')  # Get newest first
-        if status != 'OK':
-            logging.error("Failed to search emails")
-            return []
-
-        email_ids = messages[0].split()
-        if not email_ids:
-            logging.info("No emails found in inbox")
-            return []
-
-        # Get the most recent emails
-        recent_email_ids = email_ids[:max_emails]  # Take first N emails since they're newest
-        
-        emails = []
-        for email_id in recent_email_ids:
-            try:
-                # Fetch email with specific parts we need
-                status, msg_data = mail.fetch(email_id, '(RFC822)')
-                if status != 'OK':
-                    logging.error(f"Failed to fetch email ID {email_id}")
-                    continue
-                    
-                if not msg_data or not msg_data[0]:
-                    logging.warning(f"No data received for email ID {email_id}")
-                    continue
-                    
-                raw_email = msg_data[0][1]
-                email_content = parse_email(raw_email)
-                
-                if email_content and all(key in email_content for key in ['subject', 'sender', 'body', 'timestamp']):
-                    email_content['email_id'] = email_id.decode()
-                    emails.append(email_content)
-                else:
-                    logging.warning(f"Incomplete email content for ID {email_id}")
-                    
-            except Exception as e:
-                logging.error(f"Error processing email ID {email_id}: {str(e)}")
-                continue
-                
-        logging.info(f"Successfully fetched {len(emails)} emails")
-        return emails
-        
-    except Exception as e:
-        logging.error(f"Error fetching emails: {e}")
-        return []
 
 def parse_email(raw_email):
     """Parse raw email bytes to extract essential information."""
     try:
-        msg = email.message_from_bytes(raw_email, policy=default)
-        
-        # Initialize email content with default values
+        # Parse the raw email using the default policy
+        msg = email.message_from_bytes(raw_email, policy=policy.default)
+
+        # Extract email fields
         email_content = {
-            'email_id': msg['message-id'] or '',
-            'subject': msg['subject'] or 'No Subject',
-            'sender': msg['from'] or 'Unknown Sender',
+            'email_id': msg['Message-ID'],
+            'subject': msg['subject'],
+            'sender': msg['from'],
             'body': '',
-            'timestamp': msg['date'] or datetime.now(timezone.utc).isoformat(),
+            'timestamp': '',
         }
 
-        # Extract body content
+        # Extract and parse the timestamp (if available)
+        timestamp = msg.get('Date')
+        if timestamp:
+            try:
+                try:
+                    # First try parsing as ISO format
+                    parsed_timestamp = datetime.fromisoformat(timestamp)
+                except ValueError:
+                    # Fallback to email.utils parsing
+                    parsed_timestamp = email.utils.parsedate_to_datetime(timestamp)
+                
+                # Ensure timezone info
+                if parsed_timestamp.tzinfo is None:
+                    parsed_timestamp = parsed_timestamp.replace(tzinfo=timezone.utc)
+                else:
+                    parsed_timestamp = parsed_timestamp.astimezone(timezone.utc)
+                email_content['timestamp'] = parsed_timestamp.isoformat()
+            except Exception as e:
+                try:
+                    # Fallback to dateutil parser if email.utils fails
+                    parsed_timestamp = parser.parse(timestamp)
+                    if parsed_timestamp.tzinfo is None:
+                        parsed_timestamp = parsed_timestamp.replace(tzinfo=timezone.utc)
+                    else:
+                        parsed_timestamp = parsed_timestamp.astimezone(timezone.utc)
+                    email_content['timestamp'] = parsed_timestamp.isoformat()
+                except Exception as e:
+                    logging.warning(f"Error parsing timestamp: {timestamp}. Error: {e}")
+                    # Use current UTC time as fallback
+                    email_content['timestamp'] = datetime.now(timezone.utc).isoformat()
+        else:
+            logging.warning(f"Email {email_content['subject']} has no timestamp.")
+
+        # Handle multipart emails
         if msg.is_multipart():
             for part in msg.walk():
-                if part.get_content_type() == "text/plain":
-                    try:
-                        charset = part.get_content_charset() or 'utf-8'
-                        payload = part.get_payload(decode=True)
-                        if payload:
-                            decoded_content = payload.decode(charset, errors='replace')
-                            email_content['body'] += decoded_content + '\n'
-                    except Exception as e:
-                        logging.error(f"Error decoding multipart content: {str(e)}")
+                content_disposition = str(part.get("Content-Disposition"))
+                if 'attachment' not in content_disposition:
+                    body_part = part.get_payload(decode=True)
+                    if body_part:
+                        email_content['body'] += body_part.decode(
+                            part.get_content_charset() or 'utf-8', errors='ignore'
+                        ) + '\n'
         else:
-            try:
-                charset = msg.get_content_charset() or 'utf-8'
-                payload = msg.get_payload(decode=True)
-                if payload:
-                    email_content['body'] = payload.decode(charset, errors='replace')
-            except Exception as e:
-                logging.error(f"Error decoding single part content: {str(e)}")
+            # Handle single-part emails
+            body_part = msg.get_payload(decode=True)
+            if body_part:
+                email_content['body'] += body_part.decode(
+                    msg.get_content_charset() or 'utf-8', errors='ignore'
+                )
 
-        # Clean up body content
-        email_content['body'] = email_content['body'].strip()
-        
-        # Validate content
-        if not email_content['body']:
-            logging.warning(f"Email '{email_content['subject']}' has no body content")
-            email_content['body'] = '[No Content]'
+        # Log a warning if the body is still empty
+        if not email_content['body'].strip():
+            logging.warning(f"Email {email_content['subject']} has no body content.")
 
-        logging.debug(f"Successfully parsed email: {email_content['subject']}")
+        # Debug log to check parsed email content
+        logging.debug(f"Parsed email content: {email_content}")
         return email_content
 
     except Exception as e:
@@ -140,4 +142,4 @@ def parse_email(raw_email):
 
     except Exception as e:
         logging.error(f"Error parsing email: {e}")
-        return {'subject': 'Error', 'body': '', 'sender': 'Unknown', 'timestamp': 'Unknown'}  # Ensure to return the expected keys
+        return {'subject': 'Error', 'body': '', 'sender': 'Unknown', 'timestamp': 'Unknown'}

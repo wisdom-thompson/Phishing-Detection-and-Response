@@ -1,67 +1,66 @@
-import { Box, Typography, Divider, Chip } from "@mui/material";
+import { Box, Typography, Button, Divider, Paper } from "@mui/material";
 import { EmailAnalysis } from "../../types";
-import WarningIcon from "@mui/icons-material/Warning";
-import SecurityIcon from "@mui/icons-material/Security";
 
 interface EmailDetailsProps {
-  email: EmailAnalysis | null;
+  email: EmailAnalysis;
+  onClose: () => void;
 }
 
-export const EmailDetails: React.FC<EmailDetailsProps> = ({ email }) => {
-  if (!email) {
-    return (
-      <Box sx={{ p: 2, textAlign: "center" }}>
-        <Typography color="text.secondary">
-          Select an email to view details
-        </Typography>
-      </Box>
-    );
-  }
-
+export default function EmailDetails({ email, onClose }: EmailDetailsProps) {
   return (
-    <Box>
-      <Typography variant="h6" gutterBottom>
-        Email Details
-      </Typography>
-      <Box sx={{ mb: 2 }}>
-        <Chip
-          icon={email.is_phishing ? <WarningIcon /> : <SecurityIcon />}
-          label={email.is_phishing ? "Phishing Detected" : "Safe Email"}
-          color={email.is_phishing ? "error" : "success"}
-          sx={{ mb: 2 }}
-        />
+    <Paper
+      elevation={3}
+      sx={{
+        maxWidth: 600,
+        margin: "auto",
+        padding: 3,
+        borderRadius: 4,
+        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+        backgroundColor: "#fff",
+      }}
+    >
+      <Box>
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          gutterBottom
+          sx={{ color: "#333" }}
+        >
+          {email.subject || "No Subject"}
+        </Typography>
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle1" sx={{ color: "#777", mb: 1 }}>
+          <strong>From:</strong> {email.sender || "Unknown Sender"}
+        </Typography>
+
+        <Typography variant="subtitle2" sx={{ color: "#aaa", mb: 2 }}>
+          <strong>Received:</strong>{" "}
+          {new Date(email.timestamp).toLocaleString()}
+        </Typography>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography
+          variant="body1"
+          sx={{ color: "#555", whiteSpace: "pre-wrap" }}
+        >
+          {email.body || "This email has no content."}
+        </Typography>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={onClose}
+            sx={{ textTransform: "none" }}
+          >
+            Close
+          </Button>
+        </Box>
       </Box>
-      <Typography variant="subtitle2" color="text.secondary">
-        From
-      </Typography>
-      <Typography variant="body1" sx={{ mb: 2 }}>
-        {email.sender}
-      </Typography>
-      <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle2" color="text.secondary">
-        Subject
-      </Typography>
-      <Typography variant="body1" sx={{ mb: 2 }}>
-        {email.subject}
-      </Typography>
-      <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle2" color="text.secondary">
-        Content
-      </Typography>
-      <Typography 
-        variant="body1" 
-        sx={{ 
-          mt: 1,
-          maxHeight: "300px",
-          overflowY: "auto",
-          whiteSpace: "pre-wrap",
-          bgcolor: "#f5f5f5",
-          p: 2,
-          borderRadius: 1
-        }}
-      >
-        {email.body}
-      </Typography>
-    </Box>
+    </Paper>
   );
-};
+}

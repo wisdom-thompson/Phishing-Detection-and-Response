@@ -1,4 +1,4 @@
-import { signInWithPopup, browserPopupRedirectResolver } from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
 import { useState } from "react";
 import { analyzeEmails } from "../../services/api";
 import {
@@ -21,14 +21,17 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import SecurityIcon from "@mui/icons-material/Security";
 import { auth, googleProvider } from "./FireBase";
-
+import { GoogleAuthProvider } from "firebase/auth";
+import { fetchGoogleEmails } from "../../hooks/fetchGoogleEmails";
 export const LoginForm = () => {
   const navigate = useNavigate();
   const { login, isLoading } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: "",
     password: "",
+    loginType: "imap",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +40,10 @@ export const LoginForm = () => {
     try {
       const success = await login(credentials);
       if (success) {
+        // Store password temporarily for email fetching
+        sessionStorage.setItem('userPassword', credentials.password);
+        sessionStorage.setItem('loginType', 'imap');
+        sessionStorage.setItem('userCredentials', JSON.stringify(credentials));
         toast.success("Login successful! Redirecting to dashboard...");
         navigate("/dashboard");
       }
@@ -49,51 +56,36 @@ export const LoginForm = () => {
     }
   };
 
+
+
   const handleGoogleLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
-      const user = result.user;
-      
-      if (!user?.email) {
-        throw new Error("No email found in Google account");
-      }
+      googleProvider.addScope("https://www.googleapis.com/auth/gmail.readonly");
+      const result = await signInWithPopup(auth, googleProvider);
 
-      // Get the ID token
-      const idToken = await user.getIdToken();
-      
-      const credentials = {
-        email: user.email,
-        idToken: idToken
-      };
-      
-      const success = await login(credentials);
-      
-      if (!success) {
-        throw new Error("Failed to login with Google account");
-      }
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        sessionStorage.setItem("gmailToken", credential.accessToken);
+        sessionStorage.setItem("loginType", "google");
+        toast.success("Google login successful!");
 
-      toast.success("Google login successful! Fetching emails...");
-      
-      // Analyze emails after successful login
-      try {
-        const analysisResult = await analyzeEmails({ email: user.email });
-        if (analysisResult?.emails) {
-          toast.success("Email analysis complete!");
-          navigate("/dashboard");
-        } else {
-          throw new Error("No email analysis results received");
-        }
-      } catch (analysisError) {
-        console.error("Email analysis failed:", analysisError);
-        // Still navigate to dashboard even if analysis fails
-        toast.error("Email analysis incomplete. You can retry from the dashboard.");
+        // Login with Google credentials
+        await login({
+          email: result.user.email || '',
+          password: '',
+          loginType: 'google'
+        });
+
         navigate("/dashboard");
+        fetchGoogleEmails(credential.accessToken);
+
       }
-    } catch (err) {
-      console.error("Google Login unsuccessful", err);
-      toast.error("Google Login failed. Please try again.");
+    } catch (error) {
+      console.error("Google Login failed", error);
+      toast.error("Google Login failed");
     }
   };
+
 
 
 
@@ -146,7 +138,7 @@ export const LoginForm = () => {
           Secure your inbox with advanced phishing detection
         </Typography>
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+        <Box sx={{ mt: 1 }}>
           <TextField
             margin="normal"
             required
@@ -202,6 +194,7 @@ export const LoginForm = () => {
             type="submit"
             fullWidth
             variant="contained"
+            onClick={handleSubmit}
             disabled={isLoading}
             sx={{
               mt: 3,
@@ -235,11 +228,11 @@ export const LoginForm = () => {
             }}
             onClick={handleGoogleLogin}
           >
-            
+
             Sign in with Google
           </Button>
         </Box>
       </Paper>
     </Box>
   );
-};
+}

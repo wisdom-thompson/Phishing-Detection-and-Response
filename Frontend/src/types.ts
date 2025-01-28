@@ -1,6 +1,7 @@
 export interface LoginCredentials {
   email: string;
   password: string;
+  loginType: "google" | "imap";
 }
 
 export interface EmailAnalysis {
@@ -14,4 +15,6 @@ export interface EmailAnalysis {
 
 export interface User {
   email: string;
+  password: string;
+  loginType: "google" | "imap";
 }

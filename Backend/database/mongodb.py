@@ -1,74 +1,154 @@
+import email
 from pymongo import MongoClient, ReturnDocument
-
-from datetime import datetime
-
+from datetime import datetime, timezone
 import logging
-
 from config.mailserver import Config
+from dateutil import parser
 
 # Initialize MongoDB client and database
 client = MongoClient(Config.MONGODB_URI)
 db = client['phishing_detection']
 
-import logging
-
-def save_email_to_db(email_content):
+def email_exist(source=None) -> set:
+    """
+    Retrieve all processed email IDs from the specified or all collections.
+    Returns a set of email IDs.
+    """
     try:
-        # Ensure that the content matches the expected structure
+        logging.info(f"Received 'source' argument: {source}")
+        collections = []
+        if source == "gmail":
+            collections = [db['gmail_emails']]
+        elif source == "imap":
+            collections = [db['imap_emails']]
+        else:
+            collections = [db['gmail_emails'], db['imap_emails']]
+
+        email_ids = set()
+        for collection in collections:
+            # Fetch only the email_id field
+            processed_emails = collection.find({}, {"email_id": 1})
+            email_ids.update(email['email_id'] for email in processed_emails if 'email_id' in email)
+
+        logging.info(f"Retrieved {len(email_ids)} processed email IDs from source(s): {source or 'all'}")
+        return email_ids
+
+    except Exception as e:
+        logging.error(f"Error retrieving processed email IDs: {str(e)}")
+        return set()
+
+def save_email_to_db(email_content, source="Unknown"):
+    try:
+        # Validate input structure
         if not isinstance(email_content, dict):
             logging.error(f"Invalid email content format: {type(email_content)}. Expected dict.")
-            return
+            return False
+
+        # Validate required fields
+        if not email_content.get('email_id') or not email_content.get('sender'):
+            logging.error("Missing required fields: 'email_id' or 'sender'.")
+            return False
+
+        # Determine the collection name dynamically based on the source
+        collection_name = f"{source.lower()}_emails" if source.lower() in ["gmail", "imap"] else "emails"
+
+        # Check if the email already exists before saving
+        existing_email = db[collection_name].find_one({"email_id": email_content.get('email_id')})
+        if existing_email:
+            logging.info(f"Duplicate email detected, email_id: {email_content.get('email_id')}")
+
+            # Optionally, update existing document (uncomment if needed)
+            db[collection_name].update_one({"email_id": email_content.get('email_id')}, {"$set": email_content})
+
+            # Return the updated email to ensure the frontend can access it
+            return email_content  # Ensure the updated email is returned, not False
+
+        # Prepare the email document if it's a new email
+        email_document = {
+            'email_id': email_content.get('email_id'),
+            'subject': email_content.get('subject', 'No Subject'),
+            'sender': email_content.get('sender'),
+            'body': email_content.get('body', ''),
+            'timestamp': email_content.get('timestamp'),
+            'urls': email_content.get('urls', []),
+            'is_phishing': email_content.get('is_phishing', False),
+            'source': source,
+            'received_at': datetime.now(timezone.utc).isoformat()  # ISO 8601 format with UTC timezone
+        }
+
+        # Save to the appropriate collection
+        collection = db[collection_name]
+        result = collection.insert_one(email_document)
+        logging.info(f"Email saved in collection '{collection_name}' with ID: {result.inserted_id}")
         
-        # Define the required fields for validation
-        required_fields = ['subject', 'body', 'sender', 'timestamp']  # Update this list based on your schema
+        # Return the saved email document so it can be fetched by the frontend
+        return email_document
 
-        # Validate the presence of required fields
-        missing_fields = [field for field in required_fields if field not in email_content]
-        if missing_fields:
-            logging.error(f"Missing required fields in email content: {', '.join(missing_fields)}")
-            return
-
-        # Insert the email content into the desired collection
-        collection = db['emails']  # Make sure to define your collection name
-        result = collection.insert_one(email_content)
-
-        logging.info(f"Email saved to DB with ID: {result.inserted_id}, Subject: {email_content.get('subject', 'No Subject')}")
     except Exception as e:
-        logging.error(f"Error saving email to database: {str(e)}")
+        logging.error(f"Error saving email to DB: {e}, email content: {email_content}")
+        return False
 
-
-def get_last_processed_time():
-    """Retrieve the last processed time from the database."""
+def get_last_processed_time(source='imap'):
+    """Retrieve the last processed time from the database for a specific source."""
     try:
-        result = db['settings'].find_one({"_id": "last_processed_time"}, {"last_processed_time": 1})
+        # Use source to differentiate between IMAP and Gmail
+        result = db['settings'].find_one({"_id": f"last_processed_time_{source}"}, {"last_processed_time": 1})
+        
         if result and 'last_processed_time' in result:
-            return datetime.fromisoformat(result['last_processed_time'])
+            try:
+                # Parse the ISO timestamp and ensure UTC timezone
+                timestamp = datetime.fromisoformat(result['last_processed_time'])
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+                return timestamp.isoformat()
+            except ValueError:
+                logging.error(f"Invalid timestamp format in database for {source}: {result['last_processed_time']}")
+                return None
         else:
-            logging.warning("No last processed time found in the database.")
+            logging.warning(f"No last processed time found in the database for {source}.")
             return None
     except Exception as e:
-        logging.error(f"Error retrieving last processed time: {str(e)}")
+        logging.error(f"Error retrieving last processed time for {source}: {str(e)}")
         return None
 
-def update_last_processed_time(timestamp):
-    """Update the last processed time in the database."""
-    try:
-        # Ensure the timestamp is in ISO format for storage
-        iso_timestamp = timestamp.isoformat() if isinstance(timestamp, datetime) else timestamp
 
+def update_last_processed_time(timestamp, source='imap'):
+    """Update the last processed time in the database for a specific source."""
+    try:
+        # Validate and convert timestamp to ISO format with UTC timezone
+        if isinstance(timestamp, datetime):
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+            iso_timestamp = timestamp.astimezone(timezone.utc).isoformat()
+        elif isinstance(timestamp, str):
+            try:
+                # Parse the string timestamp
+                parsed = parser.parse(timestamp)
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                iso_timestamp = parsed.astimezone(timezone.utc).isoformat()
+            except ValueError as e:
+                logging.error(f"Invalid timestamp format provided for {source}: {timestamp}. Error: {e}")
+                return None
+        else:
+            logging.error(f"Invalid timestamp type for {source}: {type(timestamp)}. Expected datetime or ISO 8601 string.")
+            return None
+
+        # Update the database using the source to differentiate
         result = db['settings'].find_one_and_update(
-            {"_id": "last_processed_time"},
+            {"_id": f"last_processed_time_{source}"},
             {"$set": {"last_processed_time": iso_timestamp}},
             upsert=True,
             return_document=ReturnDocument.AFTER
         )
         
         if result:
-            logging.info(f"Updated last processed time to: {iso_timestamp}")
+            previous_timestamp = result.get("last_processed_time")
+            logging.info(f"Updated last processed time for {source} from {previous_timestamp} to {iso_timestamp}")
             return iso_timestamp
         else:
-            logging.warning("Failed to update last processed time.")
+            logging.warning(f"Failed to update last processed time for {source}.")
             return None
     except Exception as e:
-        logging.error(f"Error updating last processed time: {str(e)}")
+        logging.error(f"Error updating last processed time for {source}: {str(e)}")
         return None
