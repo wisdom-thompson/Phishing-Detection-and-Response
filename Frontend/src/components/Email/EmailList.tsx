@@ -70,7 +70,7 @@ export default function EmailList({
                   fontWeight="bold"
                   sx={{ color: "text.primary" }}
                 >
-                  {email.subject || "No Subject Found"}
+                  {email.subject || "No Subject"}
                 </Typography>
               }
               secondary={
