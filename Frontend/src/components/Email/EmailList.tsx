@@ -5,20 +5,40 @@ import {
   Chip,
   ListItemButton,
   Box,
+  IconButton,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { EmailAnalysis } from "../../types";
 
 interface EmailListProps {
   emails: EmailAnalysis[];
   onSelectEmail: (email: EmailAnalysis) => void;
   selectedEmail: EmailAnalysis | null;
+  onDeleteEmail?: (emailId: string) => void;
 }
 
 export default function EmailList({
   emails,
   onSelectEmail,
   selectedEmail,
+  onDeleteEmail,
 }: EmailListProps) {
+  const handleDelete = (e: React.MouseEvent, emailId: string) => {
+    e.stopPropagation();
+
+    const storedEmails = JSON.parse(sessionStorage.getItem("emails") || "[]");
+
+    const updatedEmails = storedEmails.filter(
+      (email: EmailAnalysis) => email.email_id !== emailId
+    );
+
+    sessionStorage.setItem("emails", JSON.stringify(updatedEmails));
+
+    if (onDeleteEmail) {
+      onDeleteEmail(emailId);
+    }
+  };
+
   return (
     <List sx={{ maxHeight: "80vh", overflowY: "auto" }}>
       {emails
@@ -82,6 +102,12 @@ export default function EmailList({
                 </Box>
               }
             />
+            <IconButton
+              onClick={(e) => handleDelete(e, email.email_id)}
+              sx={{ ml: 1 }}
+            >
+              <DeleteIcon />
+            </IconButton>
           </ListItemButton>
         ))}
     </List>

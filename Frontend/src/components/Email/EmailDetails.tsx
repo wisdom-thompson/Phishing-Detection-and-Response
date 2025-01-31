@@ -4,9 +4,14 @@ import { EmailAnalysis } from "../../types";
 interface EmailDetailsProps {
   email: EmailAnalysis;
   onClose: () => void;
+  onDelete: () => void;
 }
 
-export default function EmailDetails({ email, onClose }: EmailDetailsProps) {
+export default function EmailDetails({
+  email,
+  onClose,
+  onDelete,
+}: EmailDetailsProps) {
   return (
     <Paper
       elevation={3}
@@ -58,6 +63,14 @@ export default function EmailDetails({ email, onClose }: EmailDetailsProps) {
             sx={{ textTransform: "none" }}
           >
             Close
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={onDelete}
+            sx={{ textTransform: "none" }}
+          >
+            Delete
           </Button>
         </Box>
       </Box>

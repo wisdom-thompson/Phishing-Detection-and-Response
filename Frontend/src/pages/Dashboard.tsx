@@ -63,6 +63,13 @@ export default function Dashboard() {
   const emailIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const token = sessionStorage.getItem("gmailToken");
 
+  function handleDelete() {
+    if (googleEmails.length > 0 && selectedEmail) {
+      sessionStorage.removeItem(selectedEmail.email_id);
+      setSelectedEmail(null);
+    }
+  }
+
   // Helper function to update IMAP emails
   const updateImapEmails = useCallback((newEmails: EmailAnalysis[]) => {
     setImapEmails((prevEmails) => {
@@ -288,6 +295,18 @@ export default function Dashboard() {
     setEmailStats(processEmailsForChart(allEmails));
   }, [imapEmails, googleEmails, loginType]);
 
+  const handleDeleteEmail = (emailId: string) => {
+    if (loginType === "imap") {
+      setImapEmails((prevEmails) =>
+        prevEmails.filter((email) => email.email_id !== emailId)
+      );
+    } else if (loginType === "google") {
+      setGoogleEmails((prevEmails) =>
+        prevEmails.filter((email) => email.email_id !== emailId)
+      );
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -397,6 +416,7 @@ export default function Dashboard() {
                       emails={imapEmails}
                       onSelectEmail={setSelectedEmail}
                       selectedEmail={selectedEmail}
+                      onDeleteEmail={handleDeleteEmail}
                     />
                   ) : (
                     <Typography textAlign="center" color="text.secondary">
@@ -443,6 +463,7 @@ export default function Dashboard() {
                       emails={googleEmails}
                       onSelectEmail={setSelectedEmail}
                       selectedEmail={selectedEmail}
+                      onDeleteEmail={handleDeleteEmail}
                     />
                   ) : (
                     <Typography textAlign="center" color="text.secondary">
@@ -475,6 +496,7 @@ export default function Dashboard() {
                 <EmailDetails
                   email={selectedEmail}
                   onClose={() => setSelectedEmail(null)}
+                  onDelete={handleDelete}
                 />
               ) : (
                 <Typography>Select an email to view details.</Typography>
