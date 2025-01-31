@@ -1,6 +1,5 @@
 import { signInWithPopup } from "firebase/auth";
 import { useState } from "react";
-import { analyzeEmails } from "../../services/api";
 import {
   Box,
   TextField,
@@ -41,9 +40,9 @@ export const LoginForm = () => {
       const success = await login(credentials);
       if (success) {
         // Store password temporarily for email fetching
-        sessionStorage.setItem('userPassword', credentials.password);
-        sessionStorage.setItem('loginType', 'imap');
-        sessionStorage.setItem('userCredentials', JSON.stringify(credentials));
+        sessionStorage.setItem("userPassword", credentials.password);
+        sessionStorage.setItem("loginType", "imap");
+        sessionStorage.setItem("userCredentials", JSON.stringify(credentials));
         toast.success("Login successful! Redirecting to dashboard...");
         navigate("/dashboard");
       }
@@ -55,8 +54,6 @@ export const LoginForm = () => {
       );
     }
   };
-
-
 
   const handleGoogleLogin = async () => {
     try {
@@ -71,23 +68,19 @@ export const LoginForm = () => {
 
         // Login with Google credentials
         await login({
-          email: result.user.email || '',
-          password: '',
-          loginType: 'google'
+          email: result.user.email || "",
+          password: "",
+          loginType: "google",
         });
 
         navigate("/dashboard");
         fetchGoogleEmails(credential.accessToken);
-
       }
     } catch (error) {
       console.error("Google Login failed", error);
       toast.error("Google Login failed");
     }
   };
-
-
-
 
   return (
     <Box
@@ -228,11 +221,10 @@ export const LoginForm = () => {
             }}
             onClick={handleGoogleLogin}
           >
-
             Sign in with Google
           </Button>
         </Box>
       </Paper>
     </Box>
   );
-}
+};

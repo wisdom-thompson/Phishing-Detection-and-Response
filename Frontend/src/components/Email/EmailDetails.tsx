@@ -7,11 +7,7 @@ interface EmailDetailsProps {
   onDelete: () => void;
 }
 
-export default function EmailDetails({
-  email,
-  onClose,
-  onDelete,
-}: EmailDetailsProps) {
+export default function EmailDetails({ email, onClose }: EmailDetailsProps) {
   return (
     <Paper
       elevation={3}
@@ -63,14 +59,6 @@ export default function EmailDetails({
             sx={{ textTransform: "none" }}
           >
             Close
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={onDelete}
-            sx={{ textTransform: "none" }}
-          >
-            Delete
           </Button>
         </Box>
       </Box>
