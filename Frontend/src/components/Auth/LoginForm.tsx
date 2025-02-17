@@ -36,6 +36,11 @@ export const LoginForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!credentials.email || !credentials.password) {
+      toast.error("Please enter both email and password.");
+      return;
+    }
+
     try {
       const success = await login(credentials);
       if (success) {

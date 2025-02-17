@@ -14,10 +14,8 @@ def load_model():
 def is_phishing_email(email_content, model, vectorizer):
     email_text = f"{email_content['subject']} {email_content['body']}"
     email_vector = vectorizer.transform([email_text])
-    
-    # Log the transformed email vector and prediction
     prediction = model.predict(email_vector)
-    logging.debug(f"Email text: {email_text}")  # Log the email content
-    logging.debug(f"Predicted class: {prediction[0]}")  # Log the raw prediction
+    logging.debug(f"Email text: {email_text}")  
+    logging.debug(f"Predicted class: {prediction[0]}")  
     
     return bool(prediction[0])

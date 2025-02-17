@@ -50,7 +50,7 @@ export const Footer = () => {
             }}
           >
             <Link
-              href="/contact"
+              href="https://www.linkedin.com/in/owhorji-wisdom-b23944194/"
               color="text.secondary"
               sx={{ textDecoration: "none" }}
             >

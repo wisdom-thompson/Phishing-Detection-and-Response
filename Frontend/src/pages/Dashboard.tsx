@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Box, Container, Grid, Paper, Typography } from "@mui/material";
+import { useEffect, useState, useCallback } from "react";
+import { Box, Button, Container, Grid, Paper, Typography } from "@mui/material";
 import {
   BarChart,
   Bar,
@@ -20,116 +20,36 @@ import { EmailAnalysis } from "../types";
 import CircularWithValueLabel from "../components/Progress";
 import Analytics from "../components/Dashboard/Analytics";
 import EmailList from "../components/Email/EmailList";
-
-interface EmailStats {
-  date: string;
-  total: number;
-  phishing: number;
-  safe: number;
-}
-
-const processEmailsForChart = (emails: EmailAnalysis[]): EmailStats[] => {
-  const emailsByDate = emails.reduce(
-    (acc: { [key: string]: EmailStats }, email) => {
-      const date = new Date(email.timestamp).toLocaleDateString();
-      if (!acc[date]) {
-        acc[date] = { date, total: 0, phishing: 0, safe: 0 };
-      }
-      acc[date].total += 1;
-      email.is_phishing ? (acc[date].phishing += 1) : (acc[date].safe += 1);
-      return acc;
-    },
-    {}
-  );
-
-  return Object.values(emailsByDate).sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-};
+import { EmailStats, processEmailsForChart, updateEmails } from "./utils";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [imapEmails, setImapEmails] = useState<EmailAnalysis[]>([]);
   const [googleEmails, setGoogleEmails] = useState<EmailAnalysis[]>([]);
-  const [imapLoading, setImapLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [_imapLoading, setImapLoading] = useState(false);
+  const [_googleLoading, setGoogleLoading] = useState(false);
   const [imapError, setImapError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [emailStats, setEmailStats] = useState<EmailStats[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<EmailAnalysis | null>(
     null
   );
+  const [refreshing, setRefreshing] = useState(false);
   const loginType = sessionStorage.getItem("loginType");
-  const emailIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const token = sessionStorage.getItem("gmailToken");
 
-  function handleDelete() {
+  const handleDelete = () => {
     if (googleEmails.length > 0 && selectedEmail) {
       sessionStorage.removeItem(selectedEmail.email_id);
       setSelectedEmail(null);
     }
-  }
+  };
 
-  // Helper function to update IMAP emails
-  const updateImapEmails = useCallback((newEmails: EmailAnalysis[]) => {
-    setImapEmails((prevEmails) => {
-      const uniqueEmails = [...prevEmails];
-      newEmails.forEach((newEmail) => {
-        if (
-          !uniqueEmails.some(
-            (existing) => existing.email_id === newEmail.email_id
-          )
-        ) {
-          uniqueEmails.push(newEmail);
-        }
-      });
-
-      const sortedEmails = uniqueEmails.sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-      sessionStorage.setItem("imapEmails", JSON.stringify(sortedEmails));
-      return sortedEmails;
-    });
-  }, []);
-
-  // Helper function to update Google emails
-  const updateGoogleEmails = useCallback((newEmails: EmailAnalysis[]) => {
-    console.log("Processing new Google emails:", newEmails.length);
-
-    setGoogleEmails((prevEmails) => {
-      // Append new emails to existing ones
-      const updatedEmails = [...prevEmails, ...newEmails];
-
-      // Sort by timestamp (newest first)
-      const sortedEmails = updatedEmails.sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-
-      // Update session storage
-      try {
-        sessionStorage.setItem("googleEmails", JSON.stringify(sortedEmails));
-        console.log(
-          "Updated session storage with",
-          sortedEmails.length,
-          "emails"
-        );
-      } catch (error) {
-        console.error("Failed to update session storage:", error);
-      }
-
-      return sortedEmails;
-    });
-  }, []);
-
-  // Fetch IMAP emails
+  // Helper function to fetch IMAP emails
   const fetchImapEmails = useCallback(async () => {
     if (!user || loginType !== "imap") return;
-
     setImapLoading(true);
     setImapError(null);
-
     try {
       const storedPassword = sessionStorage.getItem("userPassword");
       const response: any = await analyzeEmails({
@@ -138,7 +58,9 @@ export default function Dashboard() {
         loginType: "imap",
       });
       if (response?.emails) {
-        updateImapEmails(response.emails);
+        setImapEmails((prevEmails) =>
+          updateEmails(prevEmails, response.emails, "imap")
+        );
       }
     } catch (err: any) {
       console.error("Error fetching IMAP emails:", err);
@@ -148,62 +70,26 @@ export default function Dashboard() {
     }
   }, [user, loginType]);
 
-  // Fetch Google emails
+  // Helper function to fetch Google emails
   const fetchGoogleMailEmails = useCallback(async () => {
-    if (!token || loginType !== "google") {
-      console.log("Skipping Google fetch:", {
-        hasToken: !!token,
-        loginType,
-        tokenValue: token?.substring(0, 10) + "...",
-      });
-      return;
-    }
-    setImapLoading(true);
-    setImapError(null);
-
-    console.log(
-      "Starting Google email fetch with token:",
-      token.substring(0, 10) + "..."
-    );
-
+    if (!token || loginType !== "google") return;
+    setGoogleLoading(true);
+    setGoogleError(null);
     try {
       const fetchedEmails = await fetchGoogleEmails(token);
-      console.log("Raw fetched emails:", fetchedEmails);
-
       if (Array.isArray(fetchedEmails) && fetchedEmails.length > 0) {
-        console.log("Processing", fetchedEmails.length, "Google emails");
-
-        // Ensure emails have required fields
-        const validEmails = fetchedEmails.filter(
-          (email) => email && email.email_id && email.timestamp
+        setGoogleEmails((prevEmails) =>
+          updateEmails(prevEmails, fetchedEmails, "google")
         );
-
-        if (validEmails.length !== fetchedEmails.length) {
-          console.warn(
-            "Some emails were invalid:",
-            fetchedEmails.length - validEmails.length,
-            "emails filtered out"
-          );
-        }
-
-        if (validEmails.length > 0) {
-          console.log("Updating with", validEmails.length, "valid emails");
-          updateGoogleEmails(validEmails);
-          return validEmails;
-        }
-      } else {
-        console.log("No valid emails received from API");
       }
-
-      return [];
     } catch (err: any) {
       console.error("Error in fetchGoogleMailEmails:", err);
       setGoogleError(err.message || "Failed to fetch Google emails.");
-      throw err;
+    } finally {
+      setGoogleLoading(false);
     }
-  }, [user, token, loginType, updateGoogleEmails]);
+  }, [token, loginType]);
 
-  // Initialize emails from session storage
   useEffect(() => {
     if (loginType === "imap") {
       const cachedEmails = sessionStorage.getItem("imapEmails");
@@ -218,94 +104,25 @@ export default function Dashboard() {
     }
   }, [loginType]);
 
-  // Set up IMAP email fetching interval
   useEffect(() => {
-    if (!user || loginType !== "imap") return;
-
-    console.log("Setting up IMAP interval...");
-    fetchImapEmails();
-    const intervalId = setInterval(fetchImapEmails, 30000);
-    emailIntervalRef.current = intervalId;
-
-    return () => {
-      console.log("Cleaning up IMAP interval...");
-      clearInterval(intervalId);
-    };
-  }, [user, loginType, fetchImapEmails]);
-
-  // Set up Google email fetching interval
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchGoogleEmails = async () => {
-      if (!isMounted) return;
-
-      try {
-        setGoogleLoading(true);
-        setGoogleError(null);
-        const emails = await fetchGoogleMailEmails();
-
-        if (!isMounted) return;
-
-        if (emails && emails.length > 0) {
-          console.log("Successfully fetched", emails.length, "new emails");
-        }
-      } catch (error) {
-        if (!isMounted) return;
-        console.error("Failed to fetch Google emails:", error);
-        setGoogleError(
-          error instanceof Error ? error.message : "Failed to fetch emails"
-        );
-      } finally {
-        if (isMounted) {
-          setGoogleLoading(false);
-        }
-      }
-    };
-
-    const requirements = {
-      token: !!token,
-      isGoogleLogin: loginType === "google",
-    };
-
-    if (!requirements.token || !requirements.isGoogleLogin) {
-      console.log("Google email fetch requirements not met:", requirements);
-      return;
-    }
-
-    console.log("Setting up Google email fetch interval");
-    fetchGoogleEmails(); // Initial fetch
-
-    const intervalId = setInterval(fetchGoogleEmails, 60000);
-    emailIntervalRef.current = intervalId;
-
-    return () => {
-      isMounted = false;
-      if (intervalId) {
-        clearInterval(intervalId);
-        emailIntervalRef.current = null;
-      }
-      console.log("Cleaned up Google email interval");
-    };
-  }, [user, token, loginType, fetchGoogleMailEmails]);
-
-  // Update email stats whenever emails change
-  useEffect(() => {
-    const allEmails = loginType === "imap" ? imapEmails : googleEmails;
-    setEmailStats(processEmailsForChart(allEmails));
+    const emails = loginType === "imap" ? imapEmails : googleEmails;
+    const emailStats = processEmailsForChart(emails);
+    setEmailStats(emailStats);
   }, [imapEmails, googleEmails, loginType]);
 
-  const handleDeleteEmail = (emailId: string) => {
+  const handleRefresh = async () => {
+    setRefreshing(true);
     if (loginType === "imap") {
-      setImapEmails((prevEmails) =>
-        prevEmails.filter((email) => email.email_id !== emailId)
-      );
+      await fetchImapEmails();
     } else if (loginType === "google") {
-      setGoogleEmails((prevEmails) =>
-        prevEmails.filter((email) => email.email_id !== emailId)
-      );
+      await fetchGoogleMailEmails();
     }
+    setRefreshing(false);
   };
+
+  useEffect(() => {
+    handleRefresh();
+  }, []);
 
   return (
     <Box
@@ -314,12 +131,13 @@ export default function Dashboard() {
         bgcolor: "#f9f7f3",
         display: "flex",
         flexDirection: "column",
-        padding: "20px",
+        p: 2,
       }}
     >
       <Navbar />
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
         <Grid container spacing={4}>
+          {/* Analytics Section */}
           <Grid item xs={12} md={8}>
             <Paper
               sx={{
@@ -335,6 +153,8 @@ export default function Dashboard() {
               />
             </Paper>
           </Grid>
+
+          {/* Email Trends Chart */}
           <Grid item xs={12} md={4}>
             <Paper
               sx={{
@@ -381,6 +201,8 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </Paper>
           </Grid>
+
+          {/* Email List Section for IMAP */}
           {loginType === "imap" && (
             <Grid item xs={12} md={6}>
               <Paper
@@ -391,42 +213,83 @@ export default function Dashboard() {
                   bgcolor: "rgba(255, 255, 255, 0.85)",
                 }}
               >
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  sx={{ fontWeight: "bold", color: "#333" }}
+                {/* Header with title and refresh button */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1,
+                  }}
                 >
-                  Emails
-                </Typography>
-                <Box sx={{ overflowY: "auto" }}>
-                  {imapLoading ? (
-                    <Box
-                      display="flex"
-                      justifyContent="center"
-                      alignItems="center"
-                    >
-                      <CircularWithValueLabel />
-                    </Box>
-                  ) : imapError ? (
-                    <Typography color="error" textAlign="center">
-                      {imapError}
-                    </Typography>
-                  ) : imapEmails.length > 0 ? (
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: "bold", color: "#333" }}
+                  >
+                    Emails
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                  >
+                    {refreshing ? "Refreshing..." : "Refresh"}
+                  </Button>
+                </Box>
+                {/* Email List Container */}
+                <Box
+                  sx={{ position: "relative", height: 400, overflowY: "auto" }}
+                >
+                  {imapEmails.length > 0 ? (
                     <EmailList
                       emails={imapEmails}
                       onSelectEmail={setSelectedEmail}
                       selectedEmail={selectedEmail}
-                      onDeleteEmail={handleDeleteEmail}
+                      onDeleteEmail={handleDelete}
                     />
                   ) : (
                     <Typography textAlign="center" color="text.secondary">
                       No emails found.
                     </Typography>
                   )}
+                  {/* Ghost overlay spinner when refreshing */}
+                  {refreshing && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        bgcolor: "rgba(255,255,255,0.6)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 10,
+                      }}
+                    >
+                      <CircularWithValueLabel />
+                    </Box>
+                  )}
+                  {imapError && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 8,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        zIndex: 11,
+                      }}
+                    >
+                      <Typography color="error">{imapError}</Typography>
+                    </Box>
+                  )}
                 </Box>
               </Paper>
             </Grid>
           )}
+
+          {/* Email List Section for Google */}
           {loginType === "google" && (
             <Grid item xs={12} md={6}>
               <Paper
@@ -438,43 +301,80 @@ export default function Dashboard() {
                   "&:hover": { boxShadow: 8 },
                 }}
               >
-                <Typography
-                  variant="h6"
-                  gutterBottom
-                  sx={{ fontWeight: "bold", color: "#333" }}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1,
+                  }}
                 >
-                  Gmail Emails
-                </Typography>
-                <Box sx={{ overflowY: "auto" }}>
-                  {googleLoading ? (
-                    <Box
-                      display="flex"
-                      justifyContent="center"
-                      alignItems="center"
-                    >
-                      <CircularWithValueLabel />
-                    </Box>
-                  ) : googleError ? (
-                    <Typography color="error" textAlign="center">
-                      {googleError}
-                    </Typography>
-                  ) : googleEmails.length > 0 ? (
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: "bold", color: "#333" }}
+                  >
+                    Gmail Emails
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                  >
+                    {refreshing ? "Refreshing..." : "Refresh"}
+                  </Button>
+                </Box>
+                <Box
+                  sx={{ position: "relative", height: 400, overflowY: "auto" }}
+                >
+                  {googleEmails.length > 0 ? (
                     <EmailList
                       emails={googleEmails}
                       onSelectEmail={setSelectedEmail}
                       selectedEmail={selectedEmail}
-                      onDeleteEmail={handleDeleteEmail}
+                      onDeleteEmail={handleDelete}
                     />
                   ) : (
                     <Typography textAlign="center" color="text.secondary">
                       No emails found.
                     </Typography>
                   )}
+                  {refreshing && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        bgcolor: "rgba(255,255,255,0.6)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 10,
+                      }}
+                    >
+                      <CircularWithValueLabel />
+                    </Box>
+                  )}
+                  {googleError && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        top: 8,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        zIndex: 11,
+                      }}
+                    >
+                      <Typography color="error">{googleError}</Typography>
+                    </Box>
+                  )}
                 </Box>
               </Paper>
             </Grid>
           )}
 
+          {/* Email Details Section */}
           <Grid item xs={12} md={6}>
             <Paper
               sx={{
@@ -492,15 +392,17 @@ export default function Dashboard() {
               >
                 Email Details
               </Typography>
-              {selectedEmail ? (
-                <EmailDetails
-                  email={selectedEmail}
-                  onClose={() => setSelectedEmail(null)}
-                  onDelete={handleDelete}
-                />
-              ) : (
-                <Typography>Select an email to view details.</Typography>
-              )}
+              <Box sx={{ height: 400, overflowY: "auto" }}>
+                {selectedEmail ? (
+                  <EmailDetails
+                    email={selectedEmail}
+                    onClose={() => setSelectedEmail(null)}
+                    onDelete={handleDelete}
+                  />
+                ) : (
+                  <Typography>Select an email to view details.</Typography>
+                )}
+              </Box>
             </Paper>
           </Grid>
         </Grid>
