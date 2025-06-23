@@ -1,0 +1,104 @@
+@import "../style/variables.scss";
+@import "../style/mixins.scss";
+
+.emails-page {
+  padding: $spacing-unit * 3;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-unit * 3;
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: $primary-text;
+    }
+  }
+
+  &__search {
+    background-color: $secondary-bg;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-md;
+    color: $primary-text;
+    padding: ($spacing-unit * 1.5) ($spacing-unit * 2);
+    font-size: 1rem;
+    width: 300px;
+    transition: $transition-base;
+
+    &:focus {
+      outline: none;
+      border-color: $accent-blue;
+      box-shadow: 0 0 0 3px rgba($accent-blue, 0.2);
+    }
+  }
+}
+
+.emails-table-container {
+  background-color: $secondary-bg;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+}
+
+.emails-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: ($spacing-unit * 2) ($spacing-unit * 3);
+    text-align: left;
+    border-bottom: 1px solid $border-color;
+  }
+
+  th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $secondary-text;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  tbody tr {
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+
+    &:hover {
+      background-color: lighten($secondary-bg, 3%);
+    }
+
+    &:last-child {
+      td {
+        border-bottom: none;
+      }
+    }
+  }
+
+  .centered-message {
+    text-align: center;
+    padding: $spacing-unit * 5;
+    color: $secondary-text;
+  }
+  
+  .error-message {
+      color: $accent-red;
+  }
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: $radius-full;
+  font-weight: 500;
+  font-size: 0.8rem;
+  
+  &.status--safe {
+    background-color: $status-safe-bg;
+    color: $status-safe-text;
+  }
+
+  &.status--phishing {
+    background-color: $status-phishing-bg;
+    color: $status-phishing-text;
+  }
+} 

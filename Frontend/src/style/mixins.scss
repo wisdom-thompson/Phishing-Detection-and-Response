@@ -1,0 +1,48 @@
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin button-reset {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+@mixin screen-md {
+  @media (min-width: 768px) {
+    @content;
+  }
+}
+
+@mixin screen-lg {
+  @media (min-width: 1024px) {
+    @content;
+  }
+}
+
+@mixin custom-scrollbar($thumb-color: #c1c1c1, $track-color: #f1f1f1) {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $track-color;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: $thumb-color;
+    border-radius: 10px;
+    border: 2px solid $track-color;
+
+    &:hover {
+      background-color: lighten($thumb-color, 10%);
+    }
+  }
+}

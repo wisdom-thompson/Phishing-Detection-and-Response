@@ -1,0 +1,203 @@
+// EmailList.scss
+@import "../../style/variables.scss";
+@import "../../style/mixins.scss";
+
+.email-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: $spacing-unit * 2;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: $spacing-unit;
+  @include custom-scrollbar(darken($secondary-text, 15%), $secondary-bg);
+}
+
+.risk-card {
+  background-color: $secondary-bg;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-md;
+  padding: $spacing-unit * 2;
+  transition: $transition-base;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  
+  &:hover, &.selected {
+    background-color: lighten($secondary-bg, 3%);
+    border-color: $accent-blue;
+    transform: translateY(-2px);
+  }
+  
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-unit * 1.5;
+    margin-bottom: $spacing-unit * 2;
+  }
+
+  &__icon-container {
+    color: $accent-red;
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  &__title-group {
+    flex-grow: 1;
+  }
+
+  &__subject {
+    font-size: 1rem;
+    font-weight: 500;
+    color: $primary-text;
+    margin: 0 0 4px 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__timestamp {
+    font-size: 0.8rem;
+    color: $secondary-text;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-unit;
+    margin-bottom: $spacing-unit * 2;
+  }
+  
+  &__detail-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-unit;
+    font-size: 0.9rem;
+    color: $secondary-text;
+    
+    svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: $secondary-text;
+    }
+  }
+
+  &__footer {
+    margin-top: auto;
+    padding-top: $spacing-unit * 2;
+    border-top: 1px solid $border-color;
+    display: flex;
+    gap: $spacing-unit;
+  }
+
+  &__tag {
+    background-color: rgba($secondary-text, 0.1);
+    color: $secondary-text;
+    padding: 4px 8px;
+    border-radius: $border-radius-sm;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+}
+
+.all-clear-container {
+  @include flex-center;
+  flex-direction: column;
+  height: 100%;
+  min-height: 200px;
+  color: $secondary-text;
+
+  .all-clear-icon {
+    font-size: 2.5rem;
+    margin-bottom: $spacing-unit * 2;
+  }
+}
+
+// Dark mode support
+@media (prefers-color-scheme: dark) {
+    .email-card-grid {
+        &::-webkit-scrollbar-track {
+            background: #333;
+        }
+        
+        &::-webkit-scrollbar-thumb {
+            background: #666;
+            
+            &:hover {
+                background: #777;
+            }
+        }
+    }
+    
+    .risk-card {
+        background: #1e1e1e;
+        border-color: #333;
+        
+        &:hover {
+            background: #2a2a2a;
+            border-color: #444;
+        }
+        
+        &.selected {
+            background: #1a237e;
+            border-color: #3f51b5;
+        }
+    }
+    
+    .risk-card__subject {
+        color: #e0e0e0;
+    }
+    
+    .risk-card__detail-item span {
+        color: #b0b0b0;
+    }
+    
+    .risk-card__tag {
+        &.safe {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: #c8e6c9;
+            border-color: #4caf50;
+        }
+        
+        &.phishing {
+            background: linear-gradient(135deg, #b71c1c, #d32f2f);
+            color: #ffcdd2;
+            border-color: #f44336;
+        }
+    }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+    .risk-card {
+        border-width: 2px;
+        
+        &.selected {
+            border-width: 3px;
+        }
+    }
+    
+    .risk-card__tag {
+        border-width: 2px;
+    }
+}
+
+// Reduced motion support
+@media (prefers-reduced-motion: reduce) {
+    .risk-card,
+    .risk-card__tag,
+    .risk-card__icon-container svg {
+        transition: none;
+    }
+    
+    .risk-card:hover {
+        transform: none;
+    }
+    
+    .risk-card__icon-container svg {
+        transform: none;
+    }
+}

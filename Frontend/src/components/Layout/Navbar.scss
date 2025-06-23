@@ -1,0 +1,106 @@
+@import "../../style/variables.scss";
+@import "../../style/mixins.scss";
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: ($spacing-unit * 2) ($spacing-unit * 3);
+  background-color: $secondary-bg;
+  border-bottom: 1px solid $border-color;
+  height: 70px;
+
+  &__left {
+    flex: 1;
+  }
+  &__center {
+    flex: 2;
+    display: flex;
+    justify-content: center;
+  }
+  &__right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-unit * 2;
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: $primary-text;
+    margin: 0;
+  }
+
+  &__btn {
+    @include button-reset;
+    @include flex-center;
+    gap: $spacing-unit;
+    background-color: transparent;
+    border: 1px solid $border-color;
+    color: $primary-text;
+    padding: $spacing-unit $spacing-unit * 1.5;
+    border-radius: $border-radius-md;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: $transition-base;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      border-color: lighten($border-color, 15%);
+      background-color: lighten($secondary-bg, 5%);
+    }
+
+    &--primary {
+      background-color: $accent-green;
+      border-color: $accent-green;
+      color: white;
+
+      &:hover {
+        background-color: lighten($accent-green, 5%);
+        border-color: lighten($accent-green, 5%);
+      }
+    }
+  }
+}
+
+.search-bar {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+
+  svg {
+    position: absolute;
+    top: 50%;
+    left: $spacing-unit * 1.5;
+    transform: translateY(-50%);
+    color: $secondary-text;
+    width: 20px;
+    height: 20px;
+  }
+
+  input {
+    width: 100%;
+    background-color: $primary-bg;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-md;
+    color: $primary-text;
+    padding: $spacing-unit $spacing-unit * 1.5 $spacing-unit ($spacing-unit * 5);
+    font-size: 0.9rem;
+    transition: $transition-base;
+
+    &:focus {
+      outline: none;
+      border-color: $accent-blue;
+      box-shadow: 0 0 0 3px rgba($accent-blue, 0.2);
+    }
+
+    &::placeholder {
+      color: $secondary-text;
+    }
+  }
+}

@@ -1,0 +1,250 @@
+@import "../style/variables.scss";
+@import "../style/mixins.scss";
+
+.dashboard-layout {
+  display: flex;
+  background-color: $primary-bg;
+  color: $primary-text;
+  min-height: 100vh;
+  font-family: $primary-font;
+}
+
+.dashboard-main {
+  flex-grow: 1;
+  margin-left: 80px; // Same as sidebar width
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard {
+  background-color: $primary-bg;
+  color: $primary-text;
+  min-height: 100vh;
+  font-family: $primary-font;
+
+  &__container {
+    padding: $spacing-unit * 3;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: ($spacing-unit * 3);
+    grid-template-areas:
+      "analytics analytics analytics analytics analytics analytics analytics chart chart chart chart chart"
+      "risks risks risks risks emails emails emails emails emails emails emails emails";
+  }
+}
+
+.card {
+  background-color: $secondary-bg;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-unit * 3;
+  box-shadow: $box-shadow-md;
+  transition: $transition-base;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    border-color: lighten($border-color, 10%);
+    transform: translateY(-2px);
+  }
+
+  &__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: $spacing-unit * 2;
+    color: $primary-text;
+  }
+
+  &--analytics {
+    grid-area: analytics;
+  }
+
+  &--chart {
+    grid-area: chart;
+  }
+
+  &--major-risks {
+    grid-area: risks;
+  }
+
+  &--email-list {
+    grid-area: emails;
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  &--email-details {
+    grid-column: span 12;
+    @include screen-lg {
+      grid-column: span 7;
+    }
+  }
+}
+
+.email-section {
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-unit * 2;
+  }
+
+  &__content {
+    flex-grow: 1;
+    position: relative;
+    min-height: 300px; /* Ensure content area has a minimum height */
+  }
+
+  &__empty {
+    @include flex-center;
+    height: 100%;
+    .text-muted {
+      color: $secondary-text;
+    }
+  }
+
+  &__overlay {
+    @include flex-center;
+    position: absolute;
+    inset: 0;
+    background-color: rgba($secondary-bg, 0.7);
+    border-radius: $border-radius-lg;
+    z-index: 10;
+  }
+
+  &__error {
+    color: $accent-red;
+    padding: $spacing-unit * 2;
+    border: 1px solid $accent-red;
+    border-radius: $border-radius-md;
+    background-color: rgba($accent-red, 0.1);
+  }
+}
+
+.chart-container {
+  width: 100%;
+  height: 200px; /* Adjusted height for horizontal bar chart */
+  margin-top: $spacing-unit * 2;
+}
+
+.btn {
+  &--outlined {
+    @include button-reset;
+    background-color: transparent;
+    border: 1px solid $border-color;
+    color: $primary-text;
+    padding: $spacing-unit $spacing-unit * 2;
+    border-radius: $border-radius-md;
+    font-weight: 500;
+    transition: $transition-base;
+    cursor: pointer;
+
+    &:hover {
+      background-color: $secondary-bg;
+      border-color: $accent-blue;
+      color: $accent-blue;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.chart-container--radial {
+  width: 100%;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: $spacing-unit * 2;
+}
+
+.radial-chart {
+  &__total {
+    fill: $primary-text;
+    font-size: 2.5rem;
+    font-weight: 600;
+  }
+
+  &__label {
+    fill: $secondary-text;
+    font-size: 1rem;
+  }
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: $spacing-unit * 3;
+  padding-top: $spacing-unit * 2;
+  border-top: 1px solid $border-color;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-unit;
+
+  &__color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+
+    &--safe {
+      background-color: $accent-green;
+    }
+    &--phishing {
+      background-color: $accent-red;
+    }
+  }
+
+  &__label {
+    font-size: 0.9rem;
+    color: $secondary-text;
+  }
+}
+
+.card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.card__menu-btn {
+  @include button-reset;
+  color: $secondary-text;
+  font-size: 1.5rem;
+  line-height: 1;
+
+  &:hover {
+    color: $primary-text;
+  }
+}
+
+// Fade-in animation for cards
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+ 

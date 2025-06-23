@@ -1,0 +1,51 @@
+@import "../style/variables.scss";
+@import "../style/mixins.scss";
+
+.settings-page {
+  padding: $spacing-unit * 3;
+
+  &__header {
+    margin-bottom: $spacing-unit * 4;
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: $primary-text;
+      margin-bottom: $spacing-unit;
+    }
+    p {
+      font-size: 1rem;
+      color: $secondary-text;
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    gap: $spacing-unit * 2;
+    border-bottom: 1px solid $border-color;
+    margin-bottom: $spacing-unit * 4;
+  }
+
+  &__content {
+    max-width: 800px;
+  }
+}
+
+.tab-btn {
+  @include button-reset;
+  padding: ($spacing-unit * 2) 0;
+  margin-bottom: -1px; /* Aligns with the border */
+  font-size: 1rem;
+  font-weight: 500;
+  color: $secondary-text;
+  border-bottom: 2px solid transparent;
+  transition: $transition-base;
+
+  &:hover {
+    color: $primary-text;
+  }
+
+  &.active {
+    color: $accent-blue;
+    border-bottom-color: $accent-blue;
+  }
+} 

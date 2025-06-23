@@ -1,0 +1,83 @@
+@import "../../style/variables.scss";
+@import "../../style/mixins.scss";
+
+.traffic-monitor-container {
+  background-color: lighten($secondary-bg, 2%);
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-unit * 3;
+  margin-top: $spacing-unit * 3;
+
+  .traffic-monitor__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-unit;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: $primary-text;
+  }
+
+  .traffic-monitor__description {
+    font-size: 1rem;
+    color: $secondary-text;
+    margin-bottom: $spacing-unit * 3;
+    max-width: 80ch;
+  }
+}
+
+.traffic-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: $spacing-unit * 2;
+}
+
+.stat-card {
+  background-color: $secondary-bg;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-md;
+  padding: $spacing-unit * 2;
+
+  h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: $secondary-text;
+    margin-bottom: $spacing-unit * 1.5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  p {
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: $primary-text;
+    margin: 0;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1rem;
+      color: $primary-text;
+      padding: $spacing-unit 0;
+      border-bottom: 1px solid $border-color;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      span {
+        color: $secondary-text;
+      }
+    }
+  }
+} 

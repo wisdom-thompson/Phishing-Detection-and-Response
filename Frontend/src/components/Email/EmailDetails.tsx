@@ -1,67 +1,53 @@
-import { Box, Typography, Button, Divider, Paper } from "@mui/material";
+import { useEffect } from 'react';
+import './EmailDetails.scss';
 import { EmailAnalysis } from "../../types";
 
 interface EmailDetailsProps {
   email: EmailAnalysis;
   onClose: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 }
 
-export default function EmailDetails({ email, onClose }: EmailDetailsProps) {
+export default function EmailDetails({ email, onClose, onDelete }: EmailDetailsProps) {
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [onClose]);
+
+  const handleMarkAsSafe = () => {
+    // Logic to mark email as safe would go here
+    console.log(`Marking email ${email.email_id} as safe.`);
+    onClose(); // Close modal after action
+  };
+
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        maxWidth: 600,
-        margin: "auto",
-        padding: 3,
-        borderRadius: 4,
-        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-        backgroundColor: "#fff",
-      }}
-    >
-      <Box>
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          gutterBottom
-          sx={{ color: "#333" }}
-        >
-          {email.subject || "No Subject"}
-        </Typography>
-        <Divider sx={{ my: 2 }} />
-
-        <Typography variant="subtitle1" sx={{ color: "#777", mb: 1 }}>
-          <strong>From:</strong> {email.sender || "Unknown Sender"}
-        </Typography>
-
-        <Typography variant="subtitle2" sx={{ color: "#aaa", mb: 2 }}>
-          <strong>Received:</strong>{" "}
-          {new Date(email.timestamp).toLocaleString()}
-        </Typography>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Typography
-          variant="body1"
-          sx={{ color: "#555", whiteSpace: "pre-wrap" }}
-        >
-          {email.body || "This email has no content."}
-        </Typography>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={onClose}
-            sx={{ textTransform: "none" }}
-          >
-            Close
-          </Button>
-        </Box>
-      </Box>
-    </Paper>
+    <div className="email-details-modal__overlay" onClick={onClose}>
+      <div className="email-details-modal__content" onClick={(e) => e.stopPropagation()}>
+        <div className="email-details-modal__header">
+          <h2 className="email-details-modal__subject">{email.subject}</h2>
+          <button className="email-details-modal__close-btn" onClick={onClose}>
+            &times;
+          </button>
+        </div>
+        <div className="email-details-modal__meta">
+            <div><strong>From:</strong> {email.sender}</div>
+            <div><strong>Received:</strong> {new Date(email.timestamp).toLocaleString()}</div>
+        </div>
+        <div className="email-details-modal__body">
+          <p>{email.body || 'No content available.'}</p>
+        </div>
+        <div className="email-details-modal__footer">
+            <button className="btn btn--secondary" onClick={handleMarkAsSafe}>Mark as Safe</button>
+            {onDelete && <button className="btn btn--danger" onClick={onDelete}>Delete Permanently</button>}
+        </div>
+      </div>
+    </div>
   );
 }

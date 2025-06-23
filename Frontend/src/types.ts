@@ -11,6 +11,7 @@ export interface EmailAnalysis {
   is_phishing: boolean;
   timestamp: string;
   body: string;
+  urls: string[];
 }
 
 export interface User {

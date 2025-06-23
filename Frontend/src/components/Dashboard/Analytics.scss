@@ -1,0 +1,249 @@
+@import '../../style/variables.scss';
+@import '../../style/mixins.scss';
+
+.analytics {
+  width: 100%;
+  
+  &__title {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: $secondary-text;
+    margin-bottom: $spacing-unit * 2;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: $spacing-unit * 2.5;
+    margin-bottom: $spacing-unit * 3;
+  }
+  
+  &__summary {
+    text-align: center;
+    padding: $spacing-unit * 1.5;
+    border-radius: $border-radius-md;
+    font-size: 0.9rem;
+    
+    &--safe {
+      background-color: rgba($accent-green, 0.1);
+      color: $status-safe-text;
+    }
+    
+    &--danger {
+      background-color: rgba($accent-red, 0.1);
+      color: $status-phishing-text;
+    }
+  }
+  
+  &__summary-text {
+    margin: 0;
+    strong {
+      font-weight: 600;
+    }
+  }
+}
+
+.analytics-card {
+  background-color: rgba($primary-text, 0.02);
+  border: 1px solid $border-color;
+  border-radius: $border-radius-md;
+  padding: $spacing-unit * 2;
+  text-align: center;
+  transition: $transition-base;
+  
+  &:hover {
+    transform: translateY(-4px);
+    background-color: rgba($primary-text, 0.05);
+    border-color: lighten($border-color, 15%);
+  }
+  
+  &__label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: $secondary-text;
+    margin-top: $spacing-unit * 1.5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  &--total {
+    .circular-progress__progress { stroke: $accent-blue; }
+    .circular-progress__icon { color: $accent-blue; }
+  }
+  
+  &--safe {
+    .circular-progress__progress { stroke: $accent-green; }
+    .circular-progress__icon { color: $accent-green; }
+  }
+  
+  &--danger {
+    .circular-progress__progress { stroke: $accent-red; }
+    .circular-progress__icon { color: $accent-red; }
+  }
+}
+
+.circular-progress {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto;
+  
+  &__svg {
+    transform: rotate(-90deg);
+  }
+  
+  &__background,
+  &__progress {
+    fill: none;
+    stroke-width: 6;
+  }
+  
+  &__background {
+    stroke: $border-color;
+  }
+  
+  &__progress {
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.5s ease-out;
+  }
+  
+  &__content {
+    @include flex-center;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+  
+  &__icon {
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: $spacing-unit / 2;
+    .icon {
+      width: 32px;
+      height: 32px;
+    }
+  }
+  
+  &__count {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: $primary-text;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .analytics {
+    &__title {
+      color: $white;
+    }
+  }
+  
+  .analytics-card {
+    background-color: $gray-800;
+    border-color: $gray-700;
+    
+    &__label {
+      color: $gray-300;
+    }
+  }
+  
+  .circular-progress {
+    &__background {
+      stroke: $gray-700;
+    }
+    
+    &__count {
+      color: $white;
+    }
+  }
+}
+
+.scan-card {
+  display: flex;
+  align-items: center;
+  gap: $spacing-unit * 3;
+  
+  &__icon-container {
+    @include flex-center;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  
+  &__icon {
+    width: 36px;
+    height: 36px;
+  }
+  
+  &--no-threats {
+    .scan-card__icon-container {
+      background-color: rgba($accent-green, 0.1);
+    }
+    .scan-card__icon {
+      color: $accent-green;
+    }
+    .scan-card__status {
+        color: $primary-text;
+    }
+  }
+
+  &--threats {
+    .scan-card__icon-container {
+      background-color: rgba($accent-red, 0.1);
+    }
+    .scan-card__icon {
+      color: $accent-red;
+    }
+    .scan-card__status {
+      color: $accent-red;
+    }
+  }
+
+  &__content {
+    flex-grow: 1;
+  }
+  
+  &__status {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 ($spacing-unit / 2) 0;
+  }
+  
+  &__subtitle {
+    font-size: 0.9rem;
+    color: $primary-text;
+    margin: 0 0 $spacing-unit 0;
+  }
+
+  &__meta {
+    font-size: 0.8rem;
+    color: $secondary-text;
+    margin: 0;
+  }
+
+  &__actions {
+    margin-left: auto;
+  }
+
+  &__btn {
+    @include button-reset;
+    background-color: $accent-blue;
+    color: white;
+    padding: $spacing-unit * 1.5 $spacing-unit * 3;
+    border-radius: $border-radius-md;
+    font-weight: 500;
+    transition: $transition-base;
+
+    &:hover {
+      background-color: lighten($accent-blue, 5%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba($accent-blue, 0.2);
+    }
+  }
+}

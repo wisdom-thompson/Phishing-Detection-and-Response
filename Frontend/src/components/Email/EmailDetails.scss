@@ -1,0 +1,157 @@
+@import "../../style/variables.scss";
+@import "../../style/mixins.scss";
+
+.email-details-modal {
+  &__overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    z-index: 2000;
+    @include flex-center;
+    padding: $spacing-unit * 2;
+    animation: fadeIn 0.3s ease;
+  }
+
+  &__content {
+    background-color: $secondary-bg;
+    border-radius: $border-radius-lg;
+    border: 1px solid $border-color;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideInUp 0.4s ease;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-unit * 2 $spacing-unit * 3;
+    border-bottom: 1px solid $border-color;
+  }
+
+  &__subject {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: $primary-text;
+    margin: 0;
+  }
+
+  &__close-btn {
+    @include button-reset;
+    color: $secondary-text;
+    font-size: 2rem;
+    line-height: 1;
+    &:hover {
+      color: $primary-text;
+    }
+  }
+
+  &__meta {
+    display: flex;
+    justify-content: space-between;
+    padding: $spacing-unit * 1.5 $spacing-unit * 3;
+    font-size: 0.9rem;
+    color: $secondary-text;
+    background-color: rgba($primary-bg, 0.5);
+    border-bottom: 1px solid $border-color;
+    strong {
+      color: $primary-text;
+    }
+  }
+  
+  &__body {
+    padding: $spacing-unit * 3;
+    overflow-y: auto;
+    flex-grow: 1;
+    color: $primary-text;
+    line-height: 1.6;
+    @include custom-scrollbar(darken($secondary-text, 15%), $secondary-bg);
+
+    p {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  }
+
+  &__footer {
+    padding: $spacing-unit * 2 $spacing-unit * 3;
+    border-top: 1px solid $border-color;
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-unit * 2;
+  }
+
+  // Responsive design
+  @media (max-width: 768px) {
+    &__content {
+      max-width: 95vw;
+      max-height: 95vh;
+    }
+    &__header, &__meta, &__body, &__footer {
+      padding-left: $spacing-unit * 2;
+      padding-right: $spacing-unit * 2;
+    }
+    &__subject {
+      font-size: 1.1rem;
+    }
+    &__footer {
+      flex-direction: column;
+      gap: $spacing-unit;
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+    &__meta {
+      flex-direction: column;
+      gap: $spacing-unit;
+    }
+  }
+}
+
+.btn {
+  @include flex-center;
+  &--secondary {
+    @include button-reset;
+    background-color: transparent;
+    border: 1px solid $border-color;
+    color: $primary-text;
+    padding: $spacing-unit $spacing-unit * 2;
+    border-radius: $border-radius-md;
+    transition: $transition-base;
+    &:hover {
+      background-color: lighten($secondary-bg, 5%);
+      border-color: $primary-text;
+    }
+  }
+  &--danger {
+    @include button-reset;
+    background-color: $accent-red;
+    color: white;
+    padding: $spacing-unit $spacing-unit * 2;
+    border-radius: $border-radius-md;
+    transition: $transition-base;
+    &:hover {
+      background-color: lighten($accent-red, 5%);
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

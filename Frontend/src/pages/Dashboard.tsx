@@ -1,14 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
-import { Box, Button, Container, Grid, Paper, Typography } from "@mui/material";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
   ResponsiveContainer,
+  RadialBarChart,
+  RadialBar,
 } from "recharts";
 import useAuth from "../hooks/useAuth";
 import { analyzeEmails } from "../services/api";
@@ -20,7 +14,10 @@ import { EmailAnalysis } from "../types";
 import CircularWithValueLabel from "../components/Progress";
 import Analytics from "../components/Dashboard/Analytics";
 import EmailList from "../components/Email/EmailList";
-import { EmailStats, processEmailsForChart, updateEmails } from "./utils";
+import { updateEmails } from "./utils";
+import Sidebar from "../components/Layout/Sidebar";
+import MajorRisks from "../components/Dashboard/MajorRisks";
+import "./Dashboard.scss";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -30,13 +27,25 @@ export default function Dashboard() {
   const [_googleLoading, setGoogleLoading] = useState(false);
   const [imapError, setImapError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
-  const [emailStats, setEmailStats] = useState<EmailStats[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<EmailAnalysis | null>(
     null
   );
   const [refreshing, setRefreshing] = useState(false);
   const loginType = sessionStorage.getItem("loginType");
   const token = sessionStorage.getItem("gmailToken");
+
+  const allEmails = loginType === "imap" ? imapEmails : googleEmails;
+  const totalEmails = allEmails.length;
+  const phishingEmails = allEmails.filter(e => e.is_phishing).length;
+  const safeEmails = totalEmails - phishingEmails;
+
+  // Use real data for the radial chart
+  const emailOverviewData = [
+    { name: "Safe", value: safeEmails, fill: "#238636" },
+    { name: "Phishing", value: phishingEmails, fill: "#da3633" },
+  ];
+
+  const totalStatus = totalEmails;
 
   const handleDelete = () => {
     if (googleEmails.length > 0 && selectedEmail) {
@@ -104,12 +113,6 @@ export default function Dashboard() {
     }
   }, [loginType]);
 
-  useEffect(() => {
-    const emails = loginType === "imap" ? imapEmails : googleEmails;
-    const emailStats = processEmailsForChart(emails);
-    setEmailStats(emailStats);
-  }, [imapEmails, googleEmails, loginType]);
-
   const handleRefresh = async () => {
     setRefreshing(true);
     if (loginType === "imap") {
@@ -125,289 +128,122 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "#f9f7f3",
-        display: "flex",
-        flexDirection: "column",
-        p: 2,
-      }}
-    >
-      <Navbar />
-      <Container maxWidth={false} sx={{ mt: 4, mb: 4 }}>
-        <Grid container spacing={4}>
-          {/* Analytics Section */}
-          <Grid item xs={12} md={8}>
-            <Paper
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                boxShadow: 4,
-                bgcolor: "rgba(255, 255, 255, 0.85)",
-                "&:hover": { boxShadow: 8 },
-              }}
-            >
+    <div className="dashboard-layout">
+      <Sidebar />
+      <main className="dashboard-main">
+        <Navbar />
+        <div className="dashboard__container">
+          <div className="dashboard__grid">
+            {/* Analytics Section */}
+            <div className="card card--analytics fade-in">
               <Analytics
-                emails={loginType === "imap" ? imapEmails : googleEmails}
+                emails={allEmails}
               />
-            </Paper>
-          </Grid>
+            </div>
 
-          {/* Email Trends Chart */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              sx={{
-                p: 4,
-                borderRadius: 3,
-                boxShadow: 4,
-                bgcolor: "#f4f3ee",
-                "&:hover": { boxShadow: 8 },
-              }}
-            >
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{ fontWeight: "bold", color: "#333" }}
-              >
-                Email Trends
-              </Typography>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={emailStats}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="total"
-                    fill="#2196f3"
-                    name="Total Emails"
-                    barSize={30}
-                  />
-                  <Bar
-                    dataKey="phishing"
-                    fill="#f44336"
-                    name="Phishing Emails"
-                    barSize={30}
-                  />
-                  <Bar
-                    dataKey="safe"
-                    fill="#4caf50"
-                    name="Safe Emails"
-                    barSize={30}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Paper>
-          </Grid>
-
-          {/* Email List Section for IMAP */}
-          {loginType === "imap" && (
-            <Grid item xs={12} md={6}>
-              <Paper
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  boxShadow: 4,
-                  bgcolor: "rgba(255, 255, 255, 0.85)",
-                }}
-              >
-                {/* Header with title and refresh button */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 1,
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: "bold", color: "#333" }}
+            {/* Email Overview Chart */}
+            <div className="card card--chart fade-in">
+              <div className="card__header">
+                <h2 className="card__title">Email Overview</h2>
+                <button className="card__menu-btn">...</button>
+              </div>
+              <div className="chart-container--radial">
+                <ResponsiveContainer width="100%" height={200}>
+                  <RadialBarChart
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="70%"
+                    outerRadius="100%"
+                    barSize={10}
+                    data={emailOverviewData}
+                    startAngle={180}
+                    endAngle={-180}
                   >
-                    Emails
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                  >
-                    {refreshing ? "Refreshing..." : "Refresh"}
-                  </Button>
-                </Box>
-                {/* Email List Container */}
-                <Box
-                  sx={{ position: "relative", height: 400, overflowY: "auto" }}
-                >
-                  {imapEmails.length > 0 ? (
-                    <EmailList
-                      emails={imapEmails}
-                      onSelectEmail={setSelectedEmail}
-                      selectedEmail={selectedEmail}
-                      onDeleteEmail={handleDelete}
+                    <RadialBar
+                      background
+                      dataKey="value"
                     />
-                  ) : (
-                    <Typography textAlign="center" color="text.secondary">
-                      No emails found.
-                    </Typography>
-                  )}
-                  {/* Ghost overlay spinner when refreshing */}
-                  {refreshing && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        bgcolor: "rgba(255,255,255,0.6)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: 10,
-                      }}
+                    <text
+                      x="50%"
+                      y="50%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="radial-chart__total"
                     >
-                      <CircularWithValueLabel />
-                    </Box>
-                  )}
-                  {imapError && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: 8,
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        zIndex: 11,
-                      }}
+                      {totalStatus}
+                    </text>
+                     <text
+                      x="50%"
+                      y="65%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="radial-chart__label"
                     >
-                      <Typography color="error">{imapError}</Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
-            </Grid>
-          )}
-
-          {/* Email List Section for Google */}
-          {loginType === "google" && (
-            <Grid item xs={12} md={6}>
-              <Paper
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  boxShadow: 4,
-                  bgcolor: "rgba(255, 255, 255, 0.85)",
-                  "&:hover": { boxShadow: 8 },
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 1,
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: "bold", color: "#333" }}
-                  >
-                    Gmail Emails
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                  >
-                    {refreshing ? "Refreshing..." : "Refresh"}
-                  </Button>
-                </Box>
-                <Box
-                  sx={{ position: "relative", height: 400, overflowY: "auto" }}
-                >
-                  {googleEmails.length > 0 ? (
-                    <EmailList
-                      emails={googleEmails}
-                      onSelectEmail={setSelectedEmail}
-                      selectedEmail={selectedEmail}
-                      onDeleteEmail={handleDelete}
+                      All Emails
+                    </text>
+                  </RadialBarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="chart-legend">
+                {emailOverviewData.map((entry, index) => (
+                  <div key={`legend-${index}`} className="legend-item">
+                    <span
+                      className={`legend-item__color legend-item__color--${entry.name.toLowerCase()}`}
                     />
-                  ) : (
-                    <Typography textAlign="center" color="text.secondary">
-                      No emails found.
-                    </Typography>
-                  )}
-                  {refreshing && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        bgcolor: "rgba(255,255,255,0.6)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: 10,
-                      }}
-                    >
-                      <CircularWithValueLabel />
-                    </Box>
-                  )}
-                  {googleError && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: 8,
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        zIndex: 11,
-                      }}
-                    >
-                      <Typography color="error">{googleError}</Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
-            </Grid>
-          )}
+                    <span className="legend-item__label">{entry.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-          {/* Email Details Section */}
-          <Grid item xs={12} md={6}>
-            <Paper
-              sx={{
-                p: 3,
-                borderRadius: 3,
-                boxShadow: 4,
-                bgcolor: "rgba(255, 255, 255, 0.85)",
-                "&:hover": { boxShadow: 8 },
-              }}
-            >
-              <Typography
-                variant="h6"
-                gutterBottom
-                sx={{ fontWeight: "bold", color: "#333" }}
-              >
-                Email Details
-              </Typography>
-              <Box sx={{ height: 400, overflowY: "auto" }}>
-                {selectedEmail ? (
-                  <EmailDetails
-                    email={selectedEmail}
-                    onClose={() => setSelectedEmail(null)}
-                    onDelete={handleDelete}
-                  />
+            <div className="card card--major-risks fade-in">
+              <MajorRisks />
+            </div>
+
+            {/* Email List Section */}
+            <div className="card card--email-list fade-in">
+              <div className="email-section__header">
+                <h2 className="card__title">Top 3 date at risk</h2>
+                <button
+                  className="btn btn--outlined"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                >
+                  {refreshing ? "Refreshing..." : "Refresh"}
+                </button>
+              </div>
+              
+              <div className="email-section__content">
+                {refreshing ? (
+                  <div className="email-section__overlay">
+                    <CircularWithValueLabel />
+                  </div>
+                ) : imapError || googleError ? (
+                  <div className="email-section__error">
+                    {imapError || googleError}
+                  </div>
                 ) : (
-                  <Typography>Select an email to view details.</Typography>
+                  <EmailList
+                    emails={allEmails}
+                    onSelectEmail={setSelectedEmail}
+                    selectedEmail={selectedEmail}
+                  />
                 )}
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Container>
-      <Footer />
-    </Box>
+              </div>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </main>
+      
+      {/* Email Details Modal - rendered outside the grid */}
+      {selectedEmail && (
+        <EmailDetails
+          email={selectedEmail}
+          onClose={() => setSelectedEmail(null)}
+          onDelete={handleDelete}
+        />
+      )}
+    </div>
   );
 }

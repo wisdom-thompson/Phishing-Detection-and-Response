@@ -1,0 +1,87 @@
+@import "../style/variables.scss";
+@import "../style/mixins.scss";
+
+.network-page {
+  padding: $spacing-unit * 3;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-unit;
+  }
+  
+  h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: $primary-text;
+  }
+  
+  &__description {
+      font-size: 1rem;
+      color: $secondary-text;
+      margin-bottom: $spacing-unit * 3;
+  }
+}
+
+.network-devices-container {
+  background-color: $secondary-bg;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  overflow: hidden;
+}
+
+.network-devices-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: ($spacing-unit * 2) ($spacing-unit * 3);
+    text-align: left;
+    border-bottom: 1px solid $border-color;
+  }
+
+  th {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $secondary-text;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .centered-message {
+    text-align: center;
+    padding: $spacing-unit * 5;
+    color: $secondary-text;
+  }
+  
+  .error-message {
+      color: $accent-red;
+  }
+}
+
+// Re-using button style
+.btn--primary {
+    background-color: $accent-blue;
+    color: $white;
+    padding: $spacing-unit*1.5 $spacing-unit * 3;
+    border: none;
+    border-radius: $border-radius-md;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: lighten($accent-blue, 5%);
+    }
+
+    &:disabled {
+        background-color: lighten($secondary-bg, 10%);
+        color: $secondary-text;
+        cursor: not-allowed;
+    }
+} 

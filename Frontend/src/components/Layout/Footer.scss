@@ -1,0 +1,193 @@
+// Modern CSS Variables for theming
+:root {
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-text-primary: #1f2937;
+    --color-text-secondary: #6b7280;
+    --color-background: #f8fafc;
+    --color-border: #e5e7eb;
+    --color-white: #ffffff;
+    --border-radius: 0.5rem;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --max-width: 1200px;
+  }
+  
+  // Dark mode support
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-primary: #3b82f6;
+      --color-primary-hover: #2563eb;
+      --color-text-primary: #f9fafb;
+      --color-text-secondary: #d1d5db;
+      --color-background: #111827;
+      --color-border: #374151;
+      --color-white: #1f2937;
+    }
+  }
+  
+  .footer {
+    margin-top: auto;
+    padding: 2rem 1rem;
+    background: var(--color-background);
+    border-top: 1px solid var(--color-border);
+    backdrop-filter: blur(8px);
+    position: relative;
+    
+    // Subtle gradient overlay for modern look
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, transparent 0%, rgba(37, 99, 235, 0.02) 100%);
+      pointer-events: none;
+    }
+  
+    &__container {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+  
+    &__content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+  
+      @media (max-width: 640px) {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+      }
+    }
+  
+    &__brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      
+      @media (max-width: 640px) {
+        margin-bottom: 0.5rem;
+      }
+    }
+  
+    &__text {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+    }
+  
+    &__links {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      align-items: center;
+  
+      @media (max-width: 640px) {
+        justify-content: center;
+        gap: 1.5rem;
+      }
+    }
+  
+    &__link {
+      position: relative;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.875rem;
+      letter-spacing: 0.025em;
+      transition: var(--transition);
+      
+      // Modern underline effect
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: currentColor;
+        transition: var(--transition);
+        border-radius: 1px;
+      }
+  
+      &:hover {
+        transform: translateY(-1px);
+        
+        &::after {
+          width: 100%;
+        }
+      }
+  
+      &:focus {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+  
+      &--primary {
+        color: var(--color-primary);
+        font-weight: 600;
+        
+        &:hover {
+          color: var(--color-primary-hover);
+        }
+      }
+  
+      &--secondary {
+        color: var(--color-text-secondary);
+        
+        &:hover {
+          color: var(--color-text-primary);
+        }
+      }
+    }
+  }
+  
+  .security-icon {
+    color: var(--color-primary);
+    transition: var(--transition);
+    
+    &:hover {
+      transform: scale(1.1);
+      filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.2));
+    }
+  }
+  
+  // Enhance accessibility
+  @media (prefers-reduced-motion: reduce) {
+    .footer__link,
+    .security-icon {
+      transition: none;
+      
+      &:hover {
+        transform: none;
+      }
+    }
+    
+    .footer__link::after {
+      transition: none;
+    }
+  }
+  
+  // High contrast mode support
+  @media (prefers-contrast: high) {
+    .footer {
+      border-top-width: 2px;
+    }
+    
+    .footer__link {
+      &::after {
+        height: 3px;
+      }
+    }
+  }

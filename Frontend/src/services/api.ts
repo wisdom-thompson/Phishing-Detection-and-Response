@@ -63,3 +63,21 @@ export const handleGoogleCallback = async (code: string) => {
   const response = await api.post('/auth/callback', { code });
   return response.data;
 };
+
+export const scanNetwork = async () => {
+    const response = await fetch(`${API_URL}/scan-network`);
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to scan network');
+    }
+    return response.json();
+}
+
+export const monitorNetworkTraffic = async (duration: number = 15) => {
+    const response = await fetch(`${API_URL}/network-monitor?duration=${duration}`);
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to monitor network traffic');
+    }
+    return response.json();
+}

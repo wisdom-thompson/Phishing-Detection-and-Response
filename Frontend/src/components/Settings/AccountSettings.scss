@@ -1,0 +1,72 @@
+@import '../../style/variables.scss';
+
+.settings-card {
+  background-color: $secondary-bg;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-unit * 4;
+
+  &__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: $spacing-unit;
+    color: $primary-text;
+  }
+
+  &__description {
+    font-size: 0.9rem;
+    color: $secondary-text;
+    margin-bottom: $spacing-unit * 3;
+  }
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-unit * 2;
+  padding: $spacing-unit * 3 0;
+  border-top: 1px solid $border-color;
+  border-bottom: 1px solid $border-color;
+  margin-bottom: $spacing-unit * 3;
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__label {
+    font-weight: 500;
+    color: $secondary-text;
+  }
+
+  &__value {
+    color: $primary-text;
+    background-color: darken($secondary-bg, 3%);
+    padding: $spacing-unit ($spacing-unit * 1.5);
+    border-radius: $border-radius-md;
+  }
+}
+
+.settings-card__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+// Re-using button style from dashboard
+.btn {
+  &--danger {
+    background-color: $accent-red;
+    color: white;
+    padding: $spacing-unit*1.5 $spacing-unit * 3;
+    border: none;
+    border-radius: $border-radius-md;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: lighten($accent-red, 5%);
+    }
+  }
+} 
